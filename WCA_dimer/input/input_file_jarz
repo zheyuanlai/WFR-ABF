@@ -1,0 +1,17 @@
+Dynamics (0=Ovrdmpd, 1=Lngvn)  : 1 
+Time step                 (dt) : 0.01 
+Number of thermalization steps : 10 
+Work distribution output freq. : 200 
+Other output frequency         : 1 
+Friction coefficient      (xi) : 1. 
+Inverse temperature     (beta) : 1 
+Total number of particles (^2) : 5 
+Elementary cell size       (a) : 1.5 
+WCA equilibrium distance (sig) : 1 
+WCA energy epsilon       (eps) : 1 
+Dimer barrier height       (h) : 2 
+Dimer bond length          (w) : 4 
+Lower value of RC     (xi_min) : -0.1 
+Upper value of RC     (xi_max) : 1.1 
+Switching time             (T) : 100. 
+Number of replicas             : 10

@@ -1,0 +1,24 @@
+Time step                 (dt) : 0.005 
+Number config. / restraint     : 10000 
+Preliminary thermalization     : 100 
+Number of subsampling steps    : 100 
+Friction coefficient      (xi) : 1. 
+Inverse temperature     (beta) : 2 
+Total number of particles (^2) : 10 
+Elementary cell size       (a) : 1.5 
+WCA equilibrium distance (sig) : 1 
+WCA energy epsilon       (eps) : 1 
+Dimer barrier height       (h) : 2 
+Dimer bond length          (w) : 2 
+Restraining potential      (K) : 100 
+Lower restraint center  (zmin) : -0.1 
+Upper restraint center  (zmax) : 1.1 
+Number of restraint cent. (Nz) : 25 
+Lower value of RC     (xi_min) : -0.2 
+Upper value of RC     (xi_max) : 1.2 
+Number of PMF RC values  (Nxi) : 100 
+Tolerance for SC convergence   : 1e-6 
+
+
+
+

@@ -1,0 +1,14 @@
+Dynamics (0=Ovrdmpd, 1=Lngvn)  : 1 
+Time step                 (dt) : 0.005 
+Number of iterations           : 500 
+Xmakemol output frequency      : 100 
+Other outputs frequency        : 100 
+Friction coefficient      (xi) : 1. 
+Inverse temperature     (beta) : 1 
+Total number of particles (^2) : 6 
+Elementary cell size       (a) : 2 
+WCA equilibrium distance (sig) : 1 
+WCA energy epsilon       (eps) : 1 
+Dimer barrier height       (h) : 2 
+Dimer bond length          (w) : 3 
+
