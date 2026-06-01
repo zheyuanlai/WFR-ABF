@@ -1,1 +1,1 @@
-# Wasserstein-Fisher-Rao Gradient Flow with Adaptive Biasing Force for Free Energy Computation
+# Adaptive Biasing Force (ABF) with Fisher-Rao for Free Energy Computation
