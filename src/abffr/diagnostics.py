@@ -74,19 +74,19 @@ def conditional_diagnostics(
         for c in x_bin_centers:
             sel = np.abs(X - c) <= bin_half_width
             n_sel = int(np.count_nonzero(sel))
-            base = dict(row_meta)
-            base.update(t=t, x_bin_center=float(c), n_samples_in_bin=n_sel)
             if n_sel < min_samples:
-                base.update(conditional_l2_y=np.nan, conditional_kl_y=np.nan)
-                rows.append(base)
-                continue
-            _, p_emp = _empirical_y_density(Y[sel], edges)
-            p_ref = ref_cond[c]
-            l2 = float(np.sqrt(np.sum((p_emp - p_ref) ** 2) * dy))
-            # KL(p_emp || p_ref) with clipping for empty empirical bins.
-            mask = p_emp > 0
-            kl = float(np.sum(p_emp[mask] * np.log(
-                (p_emp[mask] + EPS) / (p_ref[mask] + EPS))) * dy)
-            base.update(conditional_l2_y=l2, conditional_kl_y=kl)
-            rows.append(base)
+                l2, kl = np.nan, np.nan
+            else:
+                _, p_emp = _empirical_y_density(Y[sel], edges)
+                p_ref = ref_cond[c]
+                l2 = float(np.sqrt(np.sum((p_emp - p_ref) ** 2) * dy))
+                # KL(p_emp || p_ref) with clipping for empty empirical bins.
+                mask = p_emp > 0
+                kl = float(np.sum(p_emp[mask] * np.log(
+                    (p_emp[mask] + EPS) / (p_ref[mask] + EPS))) * dy)
+            # Column order matches the study spec.
+            row = dict(row_meta)
+            row.update(t=t, x_bin_center=float(c), conditional_l2_y=l2,
+                       conditional_kl_y=kl, n_samples_in_bin=n_sel)
+            rows.append(row)
     return rows
