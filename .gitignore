@@ -1,1 +1,18 @@
 .DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Generated experiment outputs. The directory skeleton is kept via .gitkeep
+# files; data/figures are ignored by default. Commit a specific artifact
+# intentionally with `git add -f <path>` if you really want it in the repo.
+results/**/*.npz
+results/**/*.png
+results/**/*.csv
+results/**/*.json
+!**/.gitkeep
