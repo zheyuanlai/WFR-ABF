@@ -40,7 +40,9 @@ DEFAULT_ROOT = "results/two_dim_xi_x"
 def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--stage", required=True, choices=["tuning", "eval"])
+    p.add_argument("--stage", required=True,
+                   choices=["tuning", "eval", "smoke_gpu", "tuning_gpu",
+                            "production_gpu"])
     p.add_argument("--output-root", default=DEFAULT_ROOT,
                    help="Experiment output root (default: %(default)s).")
     p.add_argument("--config", default=None,
@@ -74,8 +76,8 @@ def _pivot_heatmap(cfg_df, index, columns, value, target="estimated"):
     return grp.pivot(index=index, columns=columns, values=value)
 
 
-def fig_tuning_heatmaps(tuning_dir, fig_dir):
-    cfg_df = _load(os.path.join(tuning_dir, "tuning_config_summary.csv"))
+def fig_tuning_heatmaps(tuning_dir, fig_dir, prefix="tuning"):
+    cfg_df = _load(os.path.join(tuning_dir, f"{prefix}_config_summary.csv"))
     if cfg_df is None:
         _warn("tuning_config_summary.csv missing; skipping heatmaps.")
         return
@@ -112,9 +114,9 @@ def fig_tuning_heatmaps(tuning_dir, fig_dir):
         print("   wrote", os.path.relpath(path))
 
 
-def fig_tuning_boxplot(tuning_dir, fig_dir, top_k=6):
-    cfg_df = _load(os.path.join(tuning_dir, "tuning_config_summary.csv"))
-    final_df = _load(os.path.join(tuning_dir, "tuning_final_summary.csv"))
+def fig_tuning_boxplot(tuning_dir, fig_dir, prefix="tuning", top_k=6):
+    cfg_df = _load(os.path.join(tuning_dir, f"{prefix}_config_summary.csv"))
+    final_df = _load(os.path.join(tuning_dir, f"{prefix}_final_summary.csv"))
     if cfg_df is None or final_df is None:
         _warn("config/final summary missing; skipping top-config boxplot.")
         return
@@ -189,8 +191,8 @@ def _center_on_window(x, y, lo=-2.5, hi=2.5):
     return y - (np.mean(y[m]) if np.any(m) else np.mean(y))
 
 
-def fig02_time_curves(eval_dir, fig_dir):
-    long = _load(os.path.join(eval_dir, "eval_runs_long.csv"))
+def fig02_time_curves(eval_dir, fig_dir, prefix="eval"):
+    long = _load(os.path.join(eval_dir, f"{prefix}_runs_long.csv"))
     if long is None:
         _warn("eval_runs_long.csv missing; skipping fig02.")
         return
@@ -213,8 +215,8 @@ def fig02_time_curves(eval_dir, fig_dir):
     print("   wrote", os.path.relpath(path))
 
 
-def fig03_final_profiles(eval_dir, ref_dir, fig_dir):
-    prof = _load(os.path.join(eval_dir, "eval_profiles.csv"))
+def fig03_final_profiles(eval_dir, ref_dir, fig_dir, prefix="eval"):
+    prof = _load(os.path.join(eval_dir, f"{prefix}_profiles.csv"))
     ref = _load(os.path.join(ref_dir, "reference_profile.csv"))
     if prof is None or ref is None:
         _warn("eval_profiles.csv or reference_profile.csv missing; skipping fig03.")
@@ -249,8 +251,8 @@ def fig03_final_profiles(eval_dir, ref_dir, fig_dir):
     print("   wrote", os.path.relpath(path))
 
 
-def fig04_target_ablation(eval_dir, fig_dir):
-    final = _load(os.path.join(eval_dir, "eval_final_summary.csv"))
+def fig04_target_ablation(eval_dir, fig_dir, prefix="eval"):
+    final = _load(os.path.join(eval_dir, f"{prefix}_final_summary.csv"))
     if final is None:
         _warn("eval_final_summary.csv missing; skipping fig04.")
         return
@@ -270,11 +272,11 @@ def fig04_target_ablation(eval_dir, fig_dir):
     print("   wrote", os.path.relpath(path))
 
 
-def fig05_good_vs_bad(eval_dir, ref_dir, fig_dir):
-    final = _load(os.path.join(eval_dir, "eval_final_summary.csv"))
-    long = _load(os.path.join(eval_dir, "eval_runs_long.csv"))
-    prof = _load(os.path.join(eval_dir, "eval_profiles.csv"))
-    cond = _load(os.path.join(eval_dir, "eval_conditional_diagnostics.csv"))
+def fig05_good_vs_bad(eval_dir, ref_dir, fig_dir, prefix="eval"):
+    final = _load(os.path.join(eval_dir, f"{prefix}_final_summary.csv"))
+    long = _load(os.path.join(eval_dir, f"{prefix}_runs_long.csv"))
+    prof = _load(os.path.join(eval_dir, f"{prefix}_profiles.csv"))
+    cond = _load(os.path.join(eval_dir, f"{prefix}_conditional_diagnostics.csv"))
     ref = _load(os.path.join(ref_dir, "reference_profile.csv"))
     if final is None or long is None or prof is None:
         _warn("eval summary/long/profiles missing; skipping fig05.")
@@ -368,8 +370,8 @@ def _label_to_method(lab, cond):
     return fr_methods[0] if fr_methods else "abf_only"
 
 
-def fig06_conditional(eval_dir, fig_dir):
-    cond = _load(os.path.join(eval_dir, "eval_conditional_diagnostics.csv"))
+def fig06_conditional(eval_dir, fig_dir, prefix="eval"):
+    cond = _load(os.path.join(eval_dir, f"{prefix}_conditional_diagnostics.csv"))
     if cond is None:
         _warn("eval_conditional_diagnostics.csv missing; skipping fig06.")
         return
@@ -410,22 +412,28 @@ def main(argv=None):
     plotting.set_style()
     ref_dir = os.path.join(root, "reference")
 
-    if args.stage == "tuning":
-        tuning_dir = os.path.join(root, "tuning")
-        fig_dir = io_utils.ensure_dir(os.path.join(root, "figures_tuning"))
-        print(f"[plot_abf_fr_study] stage=tuning  in={tuning_dir}  out={fig_dir}")
-        fig_tuning_heatmaps(tuning_dir, fig_dir)
-        fig_tuning_boxplot(tuning_dir, fig_dir)
-    else:
-        eval_dir = os.path.join(root, "eval")
-        fig_dir = io_utils.ensure_dir(os.path.join(root, "figures_eval"))
-        print(f"[plot_abf_fr_study] stage=eval  in={eval_dir}  out={fig_dir}")
+    # Resolve the stage's data dir, figure dir and CSV prefix.  GPU stages get
+    # BOTH the tuning-style (heatmaps/boxplot) and eval-style (time-curves,
+    # profiles, ablation, conditional) figures since they have all the data.
+    sub = io_utils.STAGE_TO_DIR.get(args.stage, args.stage)
+    prefix = io_utils.stage_prefix(args.stage)
+    data_dir = os.path.join(root, sub)
+    fig_dir = io_utils.ensure_dir(os.path.join(
+        root, io_utils.STAGE_TO_FIGDIR.get(args.stage, f"figures_{sub}")))
+    is_gpu = args.stage in ("smoke_gpu", "tuning_gpu", "production_gpu")
+    print(f"[plot_abf_fr_study] stage={args.stage}  in={data_dir}  out={fig_dir} "
+          f"prefix={prefix}")
+
+    if args.stage in ("tuning",) or is_gpu:
+        fig_tuning_heatmaps(data_dir, fig_dir, prefix=prefix)
+        fig_tuning_boxplot(data_dir, fig_dir, prefix=prefix)
+    if args.stage in ("eval",) or is_gpu:
         fig01_reference_geometry(ref_dir, fig_dir)
-        fig02_time_curves(eval_dir, fig_dir)
-        fig03_final_profiles(eval_dir, ref_dir, fig_dir)
-        fig04_target_ablation(eval_dir, fig_dir)
-        fig05_good_vs_bad(eval_dir, ref_dir, fig_dir)
-        fig06_conditional(eval_dir, fig_dir)
+        fig02_time_curves(data_dir, fig_dir, prefix=prefix)
+        fig03_final_profiles(data_dir, ref_dir, fig_dir, prefix=prefix)
+        fig04_target_ablation(data_dir, fig_dir, prefix=prefix)
+        fig05_good_vs_bad(data_dir, ref_dir, fig_dir, prefix=prefix)
+        fig06_conditional(data_dir, fig_dir, prefix=prefix)
     print("[plot_abf_fr_study] done.")
     return 0
 

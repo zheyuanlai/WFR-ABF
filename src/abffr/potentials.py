@@ -85,3 +85,68 @@ def finite_difference_grad(x, y, eps=1e-6):
     dVdx = (potential_xy(x + eps, y) - potential_xy(x - eps, y)) / (2.0 * eps)
     dVdy = (potential_xy(x, y + eps) - potential_xy(x, y - eps)) / (2.0 * eps)
     return dVdx, dVdy
+
+
+# --------------------------------------------------------------------------- #
+# PyTorch versions of the potential and its gradient
+# --------------------------------------------------------------------------- #
+# These mirror the numpy functions above term-for-term so that the GPU backend
+# (:mod:`abffr.simulation_torch`) uses *exactly* the same energy/force as the
+# reference CPU engine.  ``scripts/validate_torch_backend.py`` checks the torch
+# gradient against finite differences of :func:`potential_xy_torch`.  The torch
+# import is optional so that ``import abffr.potentials`` keeps working in a
+# numpy-only environment (the CPU reference must never depend on torch).
+try:  # pragma: no cover - exercised only when torch is installed
+    import torch as _torch
+except Exception:  # pragma: no cover
+    _torch = None
+
+
+def _require_torch():
+    if _torch is None:
+        raise ImportError(
+            "PyTorch is required for the *_torch potential functions. "
+            "Install a CPU build with e.g. "
+            "`pip install torch --index-url https://download.pytorch.org/whl/cpu`."
+        )
+    return _torch
+
+
+def potential_xy_torch(x, y):
+    """Torch version of :func:`potential_xy` (matches the numpy implementation)."""
+    torch = _require_torch()
+    t1 = 3.0 * torch.exp(-x**2) * (
+        torch.exp(-(y - _Y_A)**2) - torch.exp(-(y - _Y_B)**2))
+    t2 = -5.0 * torch.exp(-y**2) * (
+        torch.exp(-(x - 1.0)**2) + torch.exp(-(x + 1.0)**2))
+    t3 = 0.2 * x**4 + 0.2 * (y - _Y_Q)**4
+    return t1 + t2 + t3
+
+
+def dVdx_xy_torch(x, y):
+    """Torch version of :func:`dVdx_xy` (the local mean force ``f = dV/dx``)."""
+    torch = _require_torch()
+    A = torch.exp(-(y - _Y_A)**2) - torch.exp(-(y - _Y_B)**2)
+    d_t1 = 3.0 * (-2.0 * x) * torch.exp(-x**2) * A
+    B = torch.exp(-y**2)
+    d_t2 = -5.0 * B * ((-2.0 * (x - 1.0)) * torch.exp(-(x - 1.0)**2)
+                       + (-2.0 * (x + 1.0)) * torch.exp(-(x + 1.0)**2))
+    d_t3 = 0.8 * x**3
+    return d_t1 + d_t2 + d_t3
+
+
+def dVdy_xy_torch(x, y):
+    """Torch version of :func:`dVdy_xy`."""
+    torch = _require_torch()
+    d_t1 = 3.0 * torch.exp(-x**2) * (
+        (-2.0 * (y - _Y_A)) * torch.exp(-(y - _Y_A)**2)
+        - (-2.0 * (y - _Y_B)) * torch.exp(-(y - _Y_B)**2))
+    C = torch.exp(-(x - 1.0)**2) + torch.exp(-(x + 1.0)**2)
+    d_t2 = -5.0 * (-2.0 * y) * torch.exp(-y**2) * C
+    d_t3 = 0.8 * (y - _Y_Q)**3
+    return d_t1 + d_t2 + d_t3
+
+
+def grad_potential_xy_torch(x, y):
+    """Return ``(dV/dx, dV/dy)`` as torch tensors (vectorised)."""
+    return dVdx_xy_torch(x, y), dVdy_xy_torch(x, y)

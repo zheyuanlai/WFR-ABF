@@ -7,12 +7,3 @@ __pycache__/
 .ipynb_checkpoints/
 .venv/
 venv/
-
-# Generated experiment outputs. The directory skeleton is kept via .gitkeep
-# files; data/figures are ignored by default. Commit a specific artifact
-# intentionally with `git add -f <path>` if you really want it in the repo.
-results/**/*.npz
-results/**/*.png
-results/**/*.csv
-results/**/*.json
-!**/.gitkeep

@@ -99,3 +99,57 @@ def profile_grid(cfg: Dict):
     """1-D reaction-coordinate grid used for ABF profiles and FR targets."""
     d = cfg["domain"]
     return np.linspace(d["x_min"], d["x_max"], int(d["nx_profile"]))
+
+
+def load_reference_for_run(cfg: Dict, require_csv: bool = True, logger=print):
+    """Reference profiles on the simulation grid, with a fail-loud CSV gate.
+
+    Like the CPU runner, the reference used for metrics and the oracle FR target
+    is *recomputed on the simulation x-grid* by y-quadrature (grid-exact).  In
+    addition -- per the GPU safety rules -- ``reference/reference_profile.csv``
+    must exist (raise :class:`FileNotFoundError` otherwise); when present it is
+    interpolated onto the grid and cross-checked, warning loudly on a mismatch
+    (e.g. a stale reference computed for a different beta/domain).
+
+    Returns ``(x_grid, ref_dict, csv_path)``.
+    """
+    import os
+
+    from . import io_utils
+
+    beta = float(cfg["simulation"]["beta"])
+    x_grid = profile_grid(cfg)
+    d = cfg["domain"]
+    ny = int(d.get("ny_ref", 801))
+    y_quad = np.linspace(d["y_min"], d["y_max"], ny)
+    ref = compute_reference(x_grid, y_quad, beta)
+
+    csv_path = os.path.join(io_utils.reference_dir(cfg), "reference_profile.csv")
+    if not os.path.exists(csv_path):
+        if require_csv:
+            raise FileNotFoundError(
+                f"Reference file {csv_path!r} not found. Run\n"
+                f"    python scripts/run_reference_2d.py --config <this-config>\n"
+                f"first (the GPU backend requires the reference to exist before "
+                f"production).")
+        logger(f"[reference] NOTE: {os.path.relpath(csv_path)} not found; using "
+               f"the on-grid quadrature reference only.")
+        return x_grid, ref, csv_path
+
+    try:
+        import pandas as pd
+        df = pd.read_csv(csv_path)
+        F_csv = np.interp(x_grid, df["x"].values, df["F_ref"].values)
+        Fp_csv = np.interp(x_grid, df["x"].values, df["Fprime_ref"].values)
+        dF = float(np.max(np.abs((F_csv - F_csv.mean())
+                                 - (ref["F_ref"] - ref["F_ref"].mean()))))
+        dFp = float(np.max(np.abs(Fp_csv - ref["Fprime_ref"])))
+        if dF > 5e-2 or dFp > 5e-2:
+            logger(f"[reference] WARNING: on-disk reference_profile.csv differs "
+                   f"from the on-grid reference (max |dF|={dF:.3g}, "
+                   f"max |dF'|={dFp:.3g}). This is expected for a different grid "
+                   f"size but a large mismatch may mean a stale reference "
+                   f"(different beta/domain). Re-run run_reference_2d.py.")
+    except Exception as exc:  # pragma: no cover - cross-check is best-effort
+        logger(f"[reference] WARNING: could not cross-check reference CSV: {exc}")
+    return x_grid, ref, csv_path

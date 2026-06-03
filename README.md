@@ -192,3 +192,150 @@ filters (no NaNs; typical and maximum FR event fraction within
 * `tqdm` is an optional progress-bar dependency; the scripts run without it.
 * Results files (`*.npz`, `*.png`, `*.csv` under `results/`) are git-ignored by
   default; force-add a specific artifact with `git add -f` if you want it tracked.
+
+## GPU / PyTorch backend (fast, parallel, resumable)
+
+The CPU/numpy engine above is the **correctness reference** and is never removed.
+For the full production tuning (estimated at ~66 single-core CPU hours) there is
+now a fast PyTorch backend that runs the *same scientific experiment* — same
+potential, reaction coordinate, ABF/FR target types, metrics and tuning logic —
+batched over particles, configs/seeds and GPUs.
+
+> **Estimator note (read this).** The GPU backend uses a **binned-smoothed 1D
+> ABF/FR estimator** for speed. It is a discretized conditional mean-force
+> estimator on the reaction-coordinate grid: particles are binned onto the
+> `x`-grid (`scatter_add`) and the count/force histograms are Gaussian-smoothed
+> (`conv1d`, bandwidth `abf.h`), so `F'_hat(x) = smooth(force-sum)/smooth(count)`
+> is a Riemann-sum approximation of the CPU kernel (Nadaraya–Watson) estimator
+> and converges to it as the grid spacing shrinks. The **CPU/kernel backend is
+> retained as the reference implementation**, and `validate_torch_backend.py`
+> compares the two on small tests (the binning error is well under 1% relative
+> in the static check). The Fisher–Rao birth–death is a fully-vectorised
+> fixed-`N` scheme (deaths overwritten by clones sampled from the
+> under-represented pool, weights `∝|score|`, capped at `fr.max_event_fraction`);
+> it matches the CPU scheme up to the `n_die≠n_clone` top-up detail and is
+> validated to give same-order metrics.
+
+### What was added
+
+```
+src/abffr/torch_utils.py        device/dtype/RNG + grid primitives (kernel, conv1d, cumtrapz, interp, scatter)
+src/abffr/simulation_torch.py   batched (B,N) ABF(+FR) engine; binned_smooth + kernel_reference modes
+src/abffr/parallel.py           batching, checkpoint/resume, CSV assembly (reuses metrics.py/diagnostics.py)
+src/abffr/potentials.py         + potential_xy_torch / grad_potential_xy_torch (match the numpy versions)
+configs/two_dim_xi_x_{smoke,tuning,production}_gpu.yaml
+scripts/run_abf_fr_grid_torch.py    full-grid GPU runner (+ --merge-only)
+scripts/validate_torch_backend.py   correctness gates (PASS/FAIL); run BEFORE production
+scripts/benchmark_backends.py       numpy vs torch-CPU vs torch-CUDA; recommends batch_size_configs
+scripts/make_gpu_shards.py          split runs into shard JSONs (keeps batchable runs together)
+scripts/run_gpu_shard.py            run one shard on one GPU (CUDA_VISIBLE_DEVICES)
+scripts/run_full_gpu_study.sh       safe production launcher (requires --yes-production)
+```
+
+GPU outputs are written under `results/two_dim_xi_x/tuning_gpu/` and
+`.../production_gpu/` (kept **separate** from the CPU results so the reference is
+never overwritten). The CSV schema is a superset of the CPU one, so the existing
+plotting/table scripts work with `--stage tuning_gpu` / `--stage production_gpu`.
+
+### Three layers of parallelism
+
+1. **Within-run particle vectorization** — all `N` particles of a run advance in
+   one set of tensor ops (shape `(B, N)`).
+2. **Batched configs/seeds on one GPU** — `batch_size_configs` independent runs
+   share each step. Runs are batched within a common
+   `(target_type, eta, fr_every, burnin_fraction)` so the FR schedule and
+   smoothing bandwidth are constant; `gamma` and `seed` vary per row.
+3. **Multi-GPU sharding** — `make_gpu_shards.py` splits runs into shard files;
+   `run_full_gpu_study.sh` launches one shard per GPU and merges afterwards.
+
+GPU↔CPU transfers happen only at `eval_every` (grid-sized profiles + the particle
+snapshot); particle arrays are never written to disk. NaN/inf inside the
+integrator raises immediately; missing reference files fail loudly.
+
+### Checkpoint / resume
+
+Every run has a unique `run_id`. A finished run drops
+`<stage>/completed/<run_id>.done`; a crashed run drops
+`<stage>/failed/<run_id>.json` with the error + config. On restart, completed
+runs (markers *and* rows already in the final-summary CSV) are skipped unless
+`--force`. Each process flushes its CSVs after every batch. So an interrupted
+GPU job resumes without recomputing finished configs.
+
+### Local smoke (CPU torch if CUDA is absent)
+
+```bash
+python scripts/run_reference_2d.py        --config configs/two_dim_xi_x_smoke_gpu.yaml
+python scripts/validate_torch_backend.py  --config configs/two_dim_xi_x_smoke_gpu.yaml
+python scripts/benchmark_backends.py      --config configs/two_dim_xi_x_smoke_gpu.yaml --n-steps 1000
+python scripts/run_abf_fr_grid_torch.py   --config configs/two_dim_xi_x_smoke_gpu.yaml --stage tuning_gpu
+python scripts/plot_abf_fr_study.py       --stage tuning_gpu
+python scripts/make_report_tables.py      --stage tuning_gpu
+```
+
+If CUDA is unavailable the scripts fall back to CPU torch and print a clear note
+that the **CUDA benchmark / CPU-vs-CUDA check must be run on the remote GPU**.
+Do **not** run the production config locally.
+
+### Remote A100 production
+
+```bash
+# On the local machine
+git status
+git add .
+git commit -m "Add GPU ABF-FR backend"
+git push
+
+# On the remote GPU machine
+git pull
+pip install torch --index-url https://download.pytorch.org/whl/cu121   # match the CUDA version
+python scripts/run_reference_2d.py       --config configs/two_dim_xi_x_production_gpu.yaml
+python scripts/validate_torch_backend.py --config configs/two_dim_xi_x_smoke_gpu.yaml
+python scripts/benchmark_backends.py     --config configs/two_dim_xi_x_smoke_gpu.yaml
+
+# Single A100 production (safe launcher; requires --yes-production)
+tmux new -s abffr_gpu
+bash scripts/run_full_gpu_study.sh \
+  --config configs/two_dim_xi_x_production_gpu.yaml \
+  --stage production_gpu \
+  --num-gpus 1 \
+  --yes-production
+
+# 4 or 8 GPUs (one shard per GPU; respects CUDA_VISIBLE_DEVICES)
+bash scripts/run_full_gpu_study.sh \
+  --config configs/two_dim_xi_x_production_gpu.yaml \
+  --stage production_gpu --num-gpus 4 --yes-production
+```
+
+Without `--yes-production` the launcher only *prepares* (reference, validation,
+benchmark, shards) and prints the planned number of runs — it never launches the
+production shards by accident. A failed validation aborts the launch (protecting
+GPU hours) unless `--skip-validation` is passed. Tune `batch_size_configs` from
+the benchmark's recommendation (try 16/32/64 on an A100).
+
+Monitoring:
+
+```bash
+tail -f results/two_dim_xi_x/production_gpu/logs/*.log
+nvidia-smi
+```
+
+### CLI config overrides
+
+The GPU runners accept overrides without editing YAML, e.g.:
+
+```bash
+python scripts/run_abf_fr_grid_torch.py --config configs/two_dim_xi_x_production_gpu.yaml \
+  --stage production_gpu --device cuda --batch-size-configs 32 \
+  --n-steps 100000 --n-particles 1000
+```
+
+### Correctness gates
+
+`scripts/validate_torch_backend.py` runs and reports PASS/FAIL on:
+analytic torch gradient vs finite differences (and torch-vs-numpy potential);
+numpy-CPU vs torch-CPU metrics (same order of magnitude); torch-CPU vs torch-CUDA
+(remote only); batch-size invariance (1 vs 4); binned_smooth vs kernel_reference
+(static binning error < 0.10 relative); and the FR event-fraction cap. It writes
+`results/two_dim_xi_x/validation/validation_report.json` and `validation_summary.csv`.
+Exact trajectory equality across backends is **not** required (RNG and GPU math
+differ); metrics and profiles are compared within tolerances.

@@ -34,7 +34,9 @@ DEFAULT_ROOT = "results/two_dim_xi_x"
 def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--stage", required=True, choices=["tuning", "eval"])
+    p.add_argument("--stage", required=True,
+                   choices=["tuning", "eval", "smoke_gpu", "tuning_gpu",
+                            "production_gpu"])
     p.add_argument("--output-root", default=DEFAULT_ROOT)
     p.add_argument("--config", default=None,
                    help="Optional config (only used to read output_root).")
@@ -53,8 +55,8 @@ def _iqr(s):
     return float(np.percentile(s, 75) - np.percentile(s, 25)) if s.size else float("nan")
 
 
-def make_tuning_table(tuning_dir, top_k):
-    path = os.path.join(tuning_dir, "tuning_config_summary.csv")
+def make_tuning_table(tuning_dir, top_k, prefix="tuning"):
+    path = os.path.join(tuning_dir, f"{prefix}_config_summary.csv")
     if not os.path.exists(path):
         _warn(f"{os.path.relpath(path)} missing; run the tuning/smoke stage first.")
         return
@@ -69,7 +71,7 @@ def make_tuning_table(tuning_dir, top_k):
     cols = [c for c in cols if c in cfg.columns]
     out = cfg[cols].head(top_k).copy()
     out.insert(0, "rank", np.arange(1, len(out) + 1))
-    dest = os.path.join(tuning_dir, "table_tuning_top_configs.csv")
+    dest = os.path.join(tuning_dir, f"table_{prefix}_top_configs.csv")
     out.to_csv(dest, index=False)
     print(f"[make_report_tables] wrote {os.path.relpath(dest)} ({len(out)} rows)")
     print(out.to_string(index=False))
@@ -84,11 +86,10 @@ def _best_config_per_method(final_df):
     return chosen
 
 
-def make_eval_table(eval_dir):
-    path = os.path.join(eval_dir, "eval_final_summary.csv")
+def make_eval_table(eval_dir, prefix="eval"):
+    path = os.path.join(eval_dir, f"{prefix}_final_summary.csv")
     if not os.path.exists(path):
-        _warn(f"{os.path.relpath(path)} missing; run --stage eval first "
-              f"(python scripts/run_abf_fr_grid.py --config <cfg> --stage eval).")
+        _warn(f"{os.path.relpath(path)} missing; run the eval/GPU stage first.")
         return
     final = pd.read_csv(path)
 
@@ -143,10 +144,16 @@ def main(argv=None):
     if args.config:
         cfg = io_utils.load_config(args.config)
         root = cfg.get("output_root", root)
+    sub = io_utils.STAGE_TO_DIR.get(args.stage, args.stage)
+    prefix = io_utils.stage_prefix(args.stage)
+    data_dir = os.path.join(root, sub)
     if args.stage == "tuning":
-        make_tuning_table(os.path.join(root, "tuning"), args.top_k)
-    else:
-        make_eval_table(os.path.join(root, "eval"))
+        make_tuning_table(data_dir, args.top_k, prefix=prefix)
+    elif args.stage == "eval":
+        make_eval_table(data_dir, prefix=prefix)
+    else:  # GPU stages: full grid -> both the top-configs and main-results tables
+        make_tuning_table(data_dir, args.top_k, prefix=prefix)
+        make_eval_table(data_dir, prefix=prefix)
     return 0
 
 

@@ -27,11 +27,20 @@ STAGE_TO_DIR = {
     "smoke": "tuning",
     "tuning": "tuning",
     "eval": "eval",
+    # GPU/torch backend stages (kept separate from the CPU outputs so the CPU
+    # reference results are never overwritten).  ``smoke_gpu`` writes into the
+    # ``tuning_gpu`` directory, mirroring how ``smoke`` writes into ``tuning``.
+    "smoke_gpu": "tuning_gpu",
+    "tuning_gpu": "tuning_gpu",
+    "production_gpu": "production_gpu",
 }
 STAGE_TO_FIGDIR = {
     "smoke": "figures_tuning",
     "tuning": "figures_tuning",
     "eval": "figures_eval",
+    "smoke_gpu": "figures_tuning_gpu",
+    "tuning_gpu": "figures_tuning_gpu",
+    "production_gpu": "figures_production_gpu",
 }
 
 
@@ -80,6 +89,38 @@ def figure_dir(cfg: Dict[str, Any], stage: str) -> str:
 def stage_prefix(stage: str) -> str:
     """File-name prefix used by a stage's CSV outputs (``tuning``/``eval``)."""
     return STAGE_TO_DIR.get(stage, stage)
+
+
+def apply_cli_overrides(cfg: Dict[str, Any], *, device=None, dtype=None,
+                        batch_size_configs=None, n_steps=None, n_particles=None,
+                        eval_every=None, seeds=None, output_root=None,
+                        estimator=None) -> Dict[str, Any]:
+    """Apply optional CLI overrides onto a loaded config (in place).
+
+    Supports the GPU-script overrides the study spec asks for
+    (``--device``/``--batch-size-configs``/``--n-steps``/``--n-particles`` and a
+    few more) without editing YAML files.
+    """
+    if output_root is not None:
+        cfg["output_root"] = output_root
+    if device is not None:
+        cfg["device"] = device
+    if dtype is not None:
+        cfg["dtype"] = dtype
+    if batch_size_configs is not None:
+        cfg["batch_size_configs"] = int(batch_size_configs)
+    if estimator is not None:
+        cfg.setdefault("abf", {})["estimator"] = estimator
+    sim = cfg.setdefault("simulation", {})
+    if n_steps is not None:
+        sim["n_steps"] = int(n_steps)
+    if n_particles is not None:
+        sim["n_particles"] = int(n_particles)
+    if eval_every is not None:
+        sim["eval_every"] = int(eval_every)
+    if seeds is not None:
+        sim["seeds"] = [int(s) for s in seeds]
+    return cfg
 
 
 def make_rng_streams(seed: int):
