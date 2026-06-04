@@ -35,6 +35,7 @@ YES_PRODUCTION=""
 SKIP_VALIDATION=""
 SKIP_BENCHMARK=""
 BENCH_STEPS=3000
+OUTPUT_ROOT_OVERRIDE=""
 PY="${PYTHON:-python3}"
 
 while [[ $# -gt 0 ]]; do
@@ -42,6 +43,7 @@ while [[ $# -gt 0 ]]; do
         --config)          CONFIG="$2"; shift 2 ;;
         --stage)           STAGE="$2"; shift 2 ;;
         --num-gpus)        NUM_GPUS="$2"; shift 2 ;;
+        --output-root)     OUTPUT_ROOT_OVERRIDE="$2"; shift 2 ;;
         --yes-production)  YES_PRODUCTION=1; shift ;;
         --skip-validation) SKIP_VALIDATION=1; shift ;;
         --skip-benchmark)  SKIP_BENCHMARK=1; shift ;;
@@ -51,7 +53,14 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-OUTPUT_ROOT="$($PY -c "import sys; sys.path.insert(0,'src'); from abffr import io_utils; print(io_utils.output_root(io_utils.load_config('$CONFIG')))")"
+# --output-root override (e.g. Google Drive path on Colab)
+OUTPUT_ROOT_ARG=""
+if [[ -n "$OUTPUT_ROOT_OVERRIDE" ]]; then
+    OUTPUT_ROOT_ARG="--output-root $OUTPUT_ROOT_OVERRIDE"
+    OUTPUT_ROOT="$OUTPUT_ROOT_OVERRIDE"
+else
+    OUTPUT_ROOT="$($PY -c "import sys; sys.path.insert(0,'src'); from abffr import io_utils; print(io_utils.output_root(io_utils.load_config('$CONFIG')))")"
+fi
 STAGE_DIR="$OUTPUT_ROOT/$STAGE"
 LOG_DIR="$STAGE_DIR/logs"
 SHARD_DIR="$STAGE_DIR/shards"
@@ -72,7 +81,7 @@ if [[ -f "$REF_CSV" ]]; then
     echo "-- Step 1: reference exists ($REF_CSV)"
 else
     echo "-- Step 1: reference missing; computing..."
-    $PY scripts/run_reference_2d.py --config "$CONFIG" || { echo "Reference FAILED"; exit 1; }
+    $PY scripts/run_reference_2d.py --config "$CONFIG" $OUTPUT_ROOT_ARG || { echo "Reference FAILED"; exit 1; }
 fi
 
 # --------------------------------------------------------------------------- #
@@ -80,7 +89,7 @@ fi
 # --------------------------------------------------------------------------- #
 if [[ -z "$SKIP_VALIDATION" ]]; then
     echo "-- Step 2: validation..."
-    if ! $PY scripts/validate_torch_backend.py --config "$CONFIG"; then
+    if ! $PY scripts/validate_torch_backend.py --config "$CONFIG" $OUTPUT_ROOT_ARG; then
         echo "!! VALIDATION FAILED -- refusing to launch production."
         echo "   Inspect $OUTPUT_ROOT/validation/validation_report.json,"
         echo "   fix the issue, or re-run with --skip-validation to override."
@@ -96,7 +105,7 @@ fi
 if [[ -z "$SKIP_BENCHMARK" ]]; then
     echo "-- Step 3: benchmark (n_steps=$BENCH_STEPS)..."
     $PY scripts/benchmark_backends.py --config "$CONFIG" --n-steps "$BENCH_STEPS" \
-        --skip-numpy || echo "   (benchmark failed; continuing)"
+        --skip-numpy $OUTPUT_ROOT_ARG || echo "   (benchmark failed; continuing)"
 else
     echo "-- Step 3: benchmark SKIPPED (--skip-benchmark)"
 fi
@@ -112,7 +121,7 @@ fi
 N_GPU=${#GPU_LIST[@]}
 (( NUM_GPUS < N_GPU )) && N_GPU=$NUM_GPUS
 echo "-- Step 4: creating $N_GPU shard(s)..."
-$PY scripts/make_gpu_shards.py --config "$CONFIG" --stage "$STAGE" --num-shards "$N_GPU"
+$PY scripts/make_gpu_shards.py --config "$CONFIG" --stage "$STAGE" --num-shards "$N_GPU" $OUTPUT_ROOT_ARG
 
 # --------------------------------------------------------------------------- #
 # Safety gate: require --yes-production to actually launch
@@ -138,7 +147,7 @@ for ((i=0;i<N_GPU;i++)); do
     GPU=${GPU_LIST[$i]}
     echo "   shard_$(printf %03d $i) -> GPU $GPU  (log: $LOG)"
     CUDA_VISIBLE_DEVICES="$GPU" $PY scripts/run_gpu_shard.py \
-        --config "$CONFIG" --stage "$STAGE" --shard "$SHARD" \
+        --config "$CONFIG" --stage "$STAGE" --shard "$SHARD" $OUTPUT_ROOT_ARG \
         > "$LOG" 2>&1 &
     PIDS+=($!); SHARDS+=("$SHARD")
 done
@@ -155,14 +164,14 @@ echo "-- Step 5: all shards finished (fail flag=$FAIL)"
 # Step 6 -- Merge CSVs + config summaries
 # --------------------------------------------------------------------------- #
 echo "-- Step 6: merging shard CSVs + config summaries..."
-$PY scripts/run_abf_fr_grid_torch.py --config "$CONFIG" --stage "$STAGE" --merge-only
+$PY scripts/run_abf_fr_grid_torch.py --config "$CONFIG" --stage "$STAGE" --merge-only $OUTPUT_ROOT_ARG
 
 # --------------------------------------------------------------------------- #
 # Step 7 -- Report tables + plots
 # --------------------------------------------------------------------------- #
 echo "-- Step 7: report tables + figures..."
 $PY scripts/make_report_tables.py --stage "$STAGE" --output-root "$OUTPUT_ROOT" || true
-$PY scripts/plot_abf_fr_study.py --stage "$STAGE" --output-root "$OUTPUT_ROOT" || true
+$PY scripts/plot_abf_fr_study.py  --stage "$STAGE" --output-root "$OUTPUT_ROOT" || true
 
 echo "========================================================"
 echo "  GPU study complete (fail flag=$FAIL)."
