@@ -27,6 +27,8 @@ REPORT_DIR = os.path.dirname(HERE)
 REPO_ROOT = os.path.dirname(REPORT_DIR)
 TAB_DIR = os.path.join(REPORT_DIR, "tables")
 PROD = os.path.join(REPO_ROOT, "results", "two_dim_xi_x", "production_gpu")
+EB_DIR = os.path.join(REPO_ROOT, "results", "entropic_bottleneck", "summaries")
+WCA_DIR = os.path.join(REPO_ROOT, "results", "wca_production", "summaries")
 
 FINAL = "final_l2_F"
 INTEGRATED = "integrated_l2_F"
@@ -75,6 +77,66 @@ def prob_beats(g, abf_by_seed):
         n += 1
         wins += int(r[FINAL] < a)
     return wins / n if n else float("nan")
+
+
+def _eb_row(df, **kw):
+    m = df
+    for k, v in kw.items():
+        m = m[m[k] == v]
+    return m.iloc[0]
+
+
+def check_eb(nums, macros):
+    """Recompute EB headline numbers from config_summary medians.
+
+    Note: EB/WCA summaries are pre-aggregated medians-over-seeds (not per-run
+    like the metastability study), so we cross-check against the published
+    config-summary rows rather than recomputing from raw runs.
+    """
+    print("\n[entropic bottleneck]")
+    path = os.path.join(EB_DIR, "config_summary.csv")
+    if not os.path.exists(path):
+        check(False, "EB config_summary.csv exists")
+        return
+    cs = pd.read_csv(path)
+    s1_fr = _eb_row(cs, stage="stage1_seeds", method="fr_estimated")
+    gain = 100 * float(s1_fr["gain_l2_f_vs_abf"])
+    win = int(round(s1_fr["winrate_vs_abf"] * s1_fr["n_seeds"]))
+    ebn = nums.get("entropic_bottleneck", {})
+    check(approx(ebn.get("gain_strong_pct", float("nan")), gain, rtol=1e-3),
+          f"json EB cold gain% matches CSV ({gain:.1f})")
+    check(ebn.get("cold_win") == win, f"json EB cold wins matches CSV ({win})")
+    check(macros.get("EBgainStrong") == f"{gain:.1f}",
+          "macro EBgainStrong rounds to CSV")
+    check(macros.get("EBcoldWin") == str(win), "macro EBcoldWin matches CSV")
+    # sign-flip sanity: beta=4 harmful, beta=8 helpful
+    b4 = 100 * float(_eb_row(cs, stage="stage3_beta", method="fr_estimated",
+                             beta=4.0)["gain_l2_f_vs_abf"])
+    check(b4 < 0 and gain > 0, f"EB gain flips sign (beta4={b4:.1f}, cold={gain:.1f})")
+
+
+def check_wca(nums, macros):
+    print("\n[WCA dimer]")
+    cpath = os.path.join(WCA_DIR, "config_summary.csv")
+    wpath = os.path.join(WCA_DIR, "winrates.csv")
+    if not (os.path.exists(cpath) and os.path.exists(wpath)):
+        check(False, "WCA config_summary.csv + winrates.csv exist")
+        return
+    wr = pd.read_csv(wpath)
+    w = wr[(wr["stage"] == "main") & (wr["name"] == "fr_est_tuned")].iloc[0]
+    gain = float(w["median_gain_pct_F"])
+    win = int(w["n_wins"])
+    wcan = nums.get("wca", {})
+    check(approx(wcan.get("tuned_gain_pct", float("nan")), gain, rtol=1e-3),
+          f"json WCA tuned gain% matches CSV ({gain:.1f})")
+    check(wcan.get("tuned_win") == win, f"json WCA tuned wins matches CSV ({win})")
+    check(macros.get("WCAtunedGainPct") == f"{gain:.1f}",
+          "macro WCAtunedGainPct rounds to CSV")
+    check(macros.get("WCAtunedWin") == str(win), "macro WCAtunedWin matches CSV")
+    # failure boundary: fr_rate 0.5 reverses (gain < tuned, and ESS collapses)
+    aggr = float(wr[(wr["stage"] == "main")
+                    & (wr["name"] == "fr_est_aggressive")].iloc[0]["median_gain_pct_F"])
+    check(aggr < 0 < gain, f"WCA aggressive reverses (aggr={aggr:.1f}, tuned={gain:.1f})")
 
 
 def main():
@@ -186,6 +248,10 @@ def main():
         path = os.path.join(TAB_DIR, fname)
         txt = open(path).read() if os.path.exists(path) else ""
         check(key in txt, f"table {fname} contains {valfmt} value {key}")
+
+    # ---- EB + WCA case numbers -------------------------------------------- #
+    check_eb(nums, macros)
+    check_wca(nums, macros)
 
     return _finish()
 

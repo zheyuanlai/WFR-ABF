@@ -164,5 +164,33 @@
     "oracle_integratedF_pct": 16.610820179415178,
     "oracle_finalF_pct": 17.318764378621644,
     "est_vs_oracle_integrated_gap_pct": -6.132240575085898
+  },
+  "entropic_bottleneck": {
+    "abf_l2f": 0.2010461518615964,
+    "fr_l2f": 0.097978513764629,
+    "gain_strong_pct": 51.26566071651095,
+    "cold_win": 20,
+    "cold_nseeds": 20,
+    "uniform_gain_pct": 50.53739274591238,
+    "oracle_gain_pct": -28.10220117015742,
+    "warm_gain_beta4_pct": -26.10789213317154,
+    "gamma_max": 50.0,
+    "gamma_max_gain_pct": 72.61788856544152,
+    "ess_hi": 101.0,
+    "ess_lo": 9.0
+  },
+  "wca": {
+    "abf_l2f": 0.0835354940802114,
+    "tuned_l2f": 0.0361092754421861,
+    "tuned_gain_pct": 55.01821735139221,
+    "tuned_win": 10,
+    "tuned_nseeds": 10,
+    "uniform_gain_pct": 54.58838721424056,
+    "oracle_gain_pct": 52.67475051248088,
+    "aggressive_gain_pct": -13.135315174606715,
+    "budget_lo_gain_pct": 35.48011460486871,
+    "budget_hi_gain_pct": 56.929273963228525,
+    "dense_abf_l2f": 0.3648765892198591,
+    "dense_fr_l2f": 0.2246464836704655
   }
 }

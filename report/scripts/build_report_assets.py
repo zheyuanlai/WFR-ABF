@@ -43,6 +43,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
+import report_cases  # noqa: E402  (EB + WCA case assets)
+
 # --------------------------------------------------------------------------- #
 # Paths
 # --------------------------------------------------------------------------- #
@@ -714,11 +716,15 @@ def main(argv=None):
                                                  est_i["median_integrated_l2_F"]),
         ),
     )
+    # EB + WCA case assets (figures, tables) and their CSV-derived numbers.
+    print("[build_report_assets] building EB + WCA case assets ...")
+    meta_int_pct = numbers["improvements"]["est_int_integratedF_pct"]
+    case_macros, case_json = report_cases.build_cases(FIG_DIR, TAB_DIR, meta_int_pct)
+    numbers.update(case_json)
+
     with open(os.path.join(TAB_DIR, "report_numbers.json"), "w") as fh:
         json.dump(numbers, fh, indent=2)
     print("   [num] wrote tables/report_numbers.json")
-
-    # LaTeX macros so prose numbers cannot drift from the CSV-derived values.
     def m_F(v): return f"{v:.4f}"
     def m_int(v): return f"{v:.2f}"
     def m_Fp(v): return f"{v:.4f}"
@@ -769,6 +775,7 @@ def main(argv=None):
         "OracFinalImpPct": m_pct(numbers["improvements"]["oracle_finalF_pct"]),
         "EstOracGapPct": m_pct(numbers["improvements"]["est_vs_oracle_integrated_gap_pct"]),
     }
+    macros.update(case_macros)   # EB + WCA case macros (namespaced)
     with open(os.path.join(TAB_DIR, "numbers.tex"), "w") as fh:
         for k, v in macros.items():
             fh.write(rf"\newcommand{{\{k}}}{{{v}}}" + "\n")

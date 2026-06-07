@@ -1,0 +1,24 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Entropic-bottleneck base regime and Fisher--Rao hyperparameters.}
+\label{tab:eb_design}
+\begin{tabular}{ll}
+\toprule
+Quantity & Value \\
+\midrule
+Inverse temperature $\beta$ & 8 \\
+Barrier height $H$ & 2.5 \\
+Channel stiffness $\omega_{\rm out},\omega_{\rm in}$ & 1, 25 \\
+Channel width $s$ & 0.25 \\
+Walkers $N$ & 256 \\
+Time step $\Delta t$ & $10^{-3}$ \\
+Steps per run & 40{,}000 \\
+FR rate $\gamma$ & 15 \\
+FR stride \texttt{fr\_every} & 10 \\
+Score clip $S_{\max}$ & 3 \\
+Event cap $f_{\max}$ & 0.08 \\
+Target EMA rate & 0.005 \\
+\bottomrule
+\end{tabular}
+\end{table}

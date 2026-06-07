@@ -1,0 +1,19 @@
+\begin{table}[t]
+\centering
+\small
+\caption{WCA main comparison (250k steps, $N=1024$, $a=1.5$). The headline gain is in the free energy; the mean-force gain is modest.}
+\label{tab:wca_main}
+\begin{tabular}{lrrrrr}
+\toprule
+Method & $\|F\!-\!F_{\rm ref}\|$ & $\|F'\!-\!F'_{\rm ref}\|$ & gain (\%) & wins & anc. ESS \\
+\midrule
+ABF only & 0.0835 & 0.3220 & -- & -- & -- \\
+FR estimated (tuned) & 0.0361 & 0.2513 & +55.0 & 10/10 & 86 \\
+FR uniform & 0.0372 & 0.2525 & +54.6 & 10/10 & 90 \\
+FR oracle$^{*}$ & 0.0387 & 0.2475 & +52.7 & 10/10 & 100 \\
+FR estimated (strong) & 0.0329 & 0.2590 & +58.9 & 10/10 & 45 \\
+FR estimated (aggressive) & 0.0935 & 0.3883 & -13.1 & 1/10 & 22 \\
+\bottomrule
+\end{tabular}
+\par\smallskip\footnotesize $^{*}$\,The oracle target uses the thermodynamic-integration reference $F_{\rm ref}$; it is a diagnostic control, \emph{not} a deployable method. Medians over $10$ seeds.
+\end{table}

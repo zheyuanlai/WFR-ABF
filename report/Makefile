@@ -44,5 +44,5 @@ endif
 
 distclean: clean
 	$(RM) $(MAIN).pdf
-	$(RM) figures/fig0*.png
+	$(RM) figures/fig0*.png figures/fig_*.png
 	$(RM) tables/*.tex tables/*.csv tables/report_numbers.json

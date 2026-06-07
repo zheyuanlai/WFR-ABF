@@ -59,11 +59,29 @@ weights $\propto|S_i|$. Cloning copies the \emph{whole} configuration
 $(X^i,Y^i)$ --- the score depends only on $x$, but the $y$-coordinate must travel
 with its $x$-coordinate, or \cref{prop:cond_invariance} would be violated. The
 step is made deliberately gentle by three safeguards: (i) a burn-in and soft
-ramp on the rate; (ii) score clipping; and (iii) a hard cap
-$f_{\max}$ on the fraction of particles replaced per event
+ramp on the rate; (ii) score clipping to $[-S_{\max},S_{\max}]$; and (iii) a hard
+cap $f_{\max}$ on the fraction of particles replaced per event
 (\texttt{max\_event\_fraction}), enforced by randomly sub-sampling deaths when
-the cap is exceeded. Net effect: gently replace particles in crowded regions of
-$x$ by copies from starved regions, leaving $N$ fixed.
+the cap is exceeded. The numerical values of $S_{\max}$, $f_{\max}$ and the FR
+stride \texttt{fr\_every} are case-specific and are listed in each case's design
+table. Net effect: gently replace particles in crowded regions of $x$ by copies
+from starved regions, leaving $N$ fixed.
+
+\subsection{Notation across cases}
+\label{sec:fr_notation}
+The same FR mechanism is applied to all three systems, but two parameters carry
+different names in the analytic two-dimensional cases
+(\cref{sec:case_meta,sec:case_eb}) and in the many-body WCA study
+(\cref{sec:case_wca}), for consistency with each study's code. The
+birth--death \emph{rate} is written $\gamma$ in the analytic cases and
+\texttt{fr\_rate} in WCA; they play identical roles in~\eqref{eq:death}. The
+\emph{onset} of FR is parameterised as a burn-in \emph{fraction} $b$ in the
+analytic cases (\eqref{eq:ramp}, $n_{\mathrm{burnin}}=\lfloor b\,
+n_{\mathrm{steps}}\rfloor$) and as an absolute step count
+\texttt{fr\_start\_steps} in WCA; the two are related by
+$b\approx\texttt{fr\_start\_steps}/n_{\mathrm{steps}}$. Where a case uses a
+collective variable $z(q)$ rather than $x$, read $x\mapsto z$ throughout this
+section (\cref{rem:manybody}).
 
 \subsection{Rate schedule}
 \label{sec:schedule}

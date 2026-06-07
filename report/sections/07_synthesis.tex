@@ -1,0 +1,75 @@
+\section{Cross-case synthesis}
+\label{sec:synthesis}
+
+The three cases were chosen to span a single axis: \emph{how sample-starved ABF
+is}. Read together they tell a more coherent story than any one of them does
+alone, and they resolve an apparent contradiction in how the FR \emph{target}
+behaves.
+
+\subsection{A starvation spectrum}
+Order the cases by how badly plain ABF is starved of reaction-coordinate samples.
+At the easy end is the metastability model (\cref{sec:case_meta}), where ABF
+already converges well; in the middle is the entropic bottleneck
+(\cref{sec:case_eb}), whose difficulty we can dial with temperature; at the hard
+end is the condensed-phase WCA dimer (\cref{sec:case_wca}), where the dimer must
+displace a dense solvent to cross the barrier. \Cref{tab:synthesis} lays the
+headline numbers side by side.
+
+\input{tables/synthesis.tex}
+
+\subsection{The gain grows with starvation}
+The practical, estimated-target FR gain tracks the starvation axis almost
+monotonically. Where ABF is a strong baseline the gain is small and not
+unconditional --- $+\EstIntegImpPct\%$ on the integrated error in the
+metastability case, with a marginal final-budget gain --- and where ABF is even
+less stressed (the hot entropic bottleneck, $\beta\le4$) FR is mildly
+\emph{harmful} ($\EBwarmGainBetaFour\%$ at $\beta=4$), because its birth--death
+injects resampling noise into an estimator that was not starved to begin with.
+Where ABF is starved the gain is large and reliable: $+\EBgainStrong\%$ in the
+cold bottleneck ($\EBcoldWin/20$ seeds) and $+\WCAtunedGainPct\%$ on the WCA dimer
+($\WCAtunedWin/10$ seeds), the relative gain growing further with simulation
+budget and the largest \emph{absolute} error removed in the densest solvent. The entropic-bottleneck temperature sweep is the cleanest evidence
+because it moves along the axis \emph{within a single system}: the same model, the
+same code, the gain flipping sign from $\beta=4$ to $\beta=8$ as ABF crosses from
+well-sampled to starved.
+
+\subsection{Why the target shape matters less than it first seemed}
+The cases appear to disagree about the FR \emph{target}. In the easy metastability
+case the oracle target is best and the estimated--oracle gap reads as a
+``target-quality bottleneck'' (\cref{sec:q1}). In the WCA dimer the oracle is no
+better than the estimated or uniform target, and in the entropic bottleneck the
+oracle is actually \emph{worse than plain ABF}. These are not contradictory once
+the mechanism is separated from the target.
+
+The \emph{dominant} effect of FR is balanced-resampling variance reduction:
+killing over-represented and cloning under-represented whole configurations raises
+the number of effectively independent force samples per reaction-coordinate bin,
+which is exactly what a starved ABF estimator lacks. This effect needs only a
+roughly correct \emph{direction} of imbalance, not an accurate free-energy shape
+--- which is why the uniform target nearly matches the estimated one in both
+starved cases. Target-shape steering is a \emph{secondary} effect that becomes
+visible only when the variance-reduction headroom is already exhausted, i.e.\ when
+ABF is well-sampled: there the residual error is limited by the target
+\emph{direction}, so the oracle (which knows the exact direction) helps. When ABF
+is starved the residual error is variance-limited, the exact shape is irrelevant,
+and a target that over-commits to a fixed shape --- the oracle, anchored to a
+$\Fref$ that the running bias has not yet matched --- can actively fight the bias
+and lose to a neutral uniform target. The metastability ``target-quality
+bottleneck'' is therefore a regime-specific reading, not a general law; we are
+careful not to carry it into the starved regimes.
+
+\subsection{A single failure mechanism: diversity collapse}
+Both the safe regimes and the one observed failure are explained by the same
+quantity --- ancestor diversity. Aggressive birth--death erodes the effective
+number of independent lineages; the gain survives only while the orthogonal
+degrees of freedom re-equilibrate fast enough to re-decorrelate the clones. The
+WCA dimer reaches the failure boundary (\texttt{fr\_rate}$\ge1$ reverses the
+benefit in the rate ladder, and even \texttt{fr\_rate}$=0.5$ becomes harmful at
+production budget, ancestor ESS $\to\!20$--$22$) because its dense solvent
+re-equilibrates slowly:
+clones stay correlated and the estimator degrades. The entropic bottleneck does
+\emph{not} reach a failure boundary even at $\gamma=50$ (ESS $\to\EBessLo$) because
+its analytic $y$-channel re-equilibrates almost instantly, so even heavy cloning
+does not starve the estimator within the budget. Same mechanism, different
+orthogonal relaxation times --- which is why a safe FR rate must be calibrated to
+how quickly the orthogonal coordinates of \emph{the system at hand} mix.

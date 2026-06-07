@@ -1,0 +1,298 @@
+\section{Case I: a two-dimensional metastability model}
+\label{sec:case_meta}
+
+Our first system is a two-dimensional double well: the regime in which ABF is
+already a strong baseline, so it sets the lower end of the difficulty spectrum.
+
+\subsection{Model potential and reference}
+\label{sec:design}
+We use a two-dimensional model potential with reaction coordinate
+$\xib(x,y)=x$,
+\begin{equation}
+  \begin{aligned}
+    V(x,y) =\;& 3\,e^{-x^2}\Bigl(e^{-(y-1/3)^2}-e^{-(y-5/3)^2}\Bigr)
+    \;-\;5\,e^{-y^2}\Bigl(e^{-(x-1)^2}+e^{-(x+1)^2}\Bigr)\\
+    &+\;0.2\,x^4 + 0.2\,(y-1/3)^4 .
+  \end{aligned}
+  \label{eq:potential}
+\end{equation}
+As shown in \cref{fig:geometry}, $V$ has two metastable basins near $x=\pm1$
+separated by a barrier near $x=0$ (with an upper sub-basin near $(0,5/3)$), so
+unbiased dynamics is metastable in $x$. We fix $\beta=4$. The reference
+$\Fref,\Fpref,\pref$ are obtained by the $y$-quadrature of
+\eqref{eq:pref}--\eqref{eq:meanforce} on a fine grid and are treated as ground
+truth.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{fig01_reference_geometry.png}
+  \caption{Problem geometry. (a) The potential $V(x,y)$~\eqref{eq:potential}
+    with two basins near $x=\pm1$. (b) The canonical density
+    $\pi\propto e^{-\beta V}$ at $\beta=4$, concentrated in the two basins.
+    (c) The reference free energy $\Fref(x)$ (a double well in $x$) and
+    (d) the reference mean force $\Fpref(x)$, both by $y$-quadrature.}
+  \label{fig:geometry}
+\end{figure}
+
+\subsection{Methods, metrics, and study design}
+Four methods are compared, identical except for the FR target:
+\textbf{ABF only} (no birth--death; baseline);
+\textbf{ABF+FR estimated}~\eqref{eq:q_est} (the practical method);
+\textbf{ABF+FR uniform}~\eqref{eq:q_unif} (naive marginal-flattening ablation);
+and \textbf{ABF+FR oracle}~\eqref{eq:q_oracle} (diagnostic control,
+\cref{rem:oracle}). All four share the same potential, integrator, ABF
+estimator, seeds and initial conditions, so differences are attributable to the
+FR step and its target alone (matched-seed comparison).
+
+\subsubsection{Metrics}
+\label{sec:metrics}
+All profile errors are interior, domain-RMS $\Ltwo$ distances on the window
+$x\in[-2.5,2.5]$ (the reflecting walls and the $x^4$ confinement make the edges
+uninformative), with free-energy profiles centred as in \cref{sec:abf}.
+
+\paragraph{Primary (practical) metrics.}
+\begin{equation}
+  \Norm{\Fhat_T-\Fref}_{\Ltwo},\qquad
+  \Norm{\Fphat_T-\Fpref}_{\Ltwo},\qquad
+  \int_0^T \Norm{\Fhat_t-\Fref}_{\Ltwo}\dd t.
+  \label{eq:primary}
+\end{equation}
+The first two are \emph{final-budget accuracy} at the end of the run; the
+\emph{integrated} error rewards \emph{fast} convergence (anytime performance),
+since a method that reaches a good profile earlier accumulates less error over
+$[0,T]$. These two notions need not be optimised by the same hyperparameters,
+a point we treat carefully in \cref{sec:meta_results}.
+
+\paragraph{Diagnostic metrics.}
+Reaction-coordinate marginal flatness ($\Norm{\phat-\mathrm{Unif}}$ and
+$\Norm{\phat-q}$); cumulative barrier crossings at $x=0$; region fractions
+(left basin / barrier / right basin); the FR event fraction (particles replaced
+per FR application) and the FR score dispersion $\mathrm{std}_i\,S_i$;
+conditional $Y\mid X=x$ errors (\cref{sec:conditional}); and ancestor/diversity
+counts. We stress that \emph{marginal flatness is a diagnostic, not the
+objective}: the goal is free-energy/mean-force accuracy~\eqref{eq:primary}. A
+method can flatten $\phat$ and yet fail to improve $\Fhat$ if it does so by
+corrupting the conditional samples.
+
+\paragraph{Conditional $Y\mid X$ diagnostics.}
+\label{sec:conditional}
+At a set of $x$-bin centres we compare the empirical conditional
+$\phat(y\mid x\in I_j)$ (the $y$-histogram of particles whose $x$ falls in a
+narrow window) to the reference conditional
+$\pref(y\mid x)\propto e^{-\beta V(x,y)}$, via an $\Ltwo$ distance and a KL
+divergence. By \cref{prop:cond_invariance} a benign FR step should leave these
+close to the ABF-only values.
+
+\subsubsection{GPU implementation and study size}
+The production runs use a batched PyTorch backend that simulates many runs at
+once and reuses the reference metrics/diagnostics code verbatim. For speed it
+uses the binned-smoothed ABF/FR estimator of \cref{sec:abf_estimator} rather
+than the exact kernel sums~\eqref{eq:nw}, and a fully vectorised fixed-$N$
+birth--death; the two backends agree to within the stated tolerance ($<1\%$ in
+practice) on the validation suite. We flag in \cref{sec:discussion} that this
+binned estimator is a deliberate, but not mathematically identical, surrogate for
+the kernel notebook implementation. The FR methods sweep the rate $\gamma$, the
+marginal bandwidth $\eta$, and the burn-in fraction $b$ at a fixed FR stride;
+the resulting study (\cref{tab:design}) comprises \NRuns{} runs over \NConfigs{}
+configurations and \NSeeds{} seeds, at \NParticles{} particles and \NSteps{}
+steps each, with \emph{no} NaNs in the primary metrics. The selected
+configurations are listed in \cref{tab:selected_configs}.
+
+\input{tables/design_summary.tex}
+\input{tables/selected_configs.tex}
+
+\subsection{Results}
+\label{sec:meta_results}
+\Cref{tab:main_integrated} reports the four methods, each at its best
+configuration under the \emph{integrated}-$\Ltwo(F)$ rule (convergence speed;
+see \cref{sec:selection}). Reading the practical comparison
+(ABF only versus ABF+FR estimated): the estimated-target FR reduces the median
+integrated free-energy error from $\AbfIntegF$ to $\EstIntegF$, a
+$\EstIntegImpPct\%$ reduction, while the \emph{final} free-energy error improves
+only slightly (from $\AbfFinalF$ to $\EstIntFinalF$). The birth--death is
+extremely gentle: the median per-event replacement fraction is $\EstIntEvt$, of
+order one particle in $10^{5}$ per FR application. \Cref{fig:convergence} shows
+the same story over time: the FR curves detach below the ABF-only curve in the
+early and middle phase of the $\Ltwo(F)$ panel.
+
+\input{tables/best_configs_by_integrated_F.tex}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{fig02_convergence_curves.png}
+  \caption{Convergence of the selected (integrated-$\Ltwo(F)$ rule)
+    configuration for each method: median (line) and inter-quartile range
+    (band) over \NSeeds{} seeds. The free-energy and mean-force errors
+    (top, log scale) fall fastest for the oracle diagnostic and faster for the
+    estimated/uniform FR than for ABF only in the early-to-middle phase;
+    barrier crossings (bottom left) are essentially indistinguishable, and the
+    FR event fraction (bottom right) is of order $10^{-5}$ throughout. The oracle
+    curve is a diagnostic control (\cref{rem:oracle}).}
+  \label{fig:convergence}
+\end{figure}
+
+\subsubsection{Final profiles and target-type ablation}
+\Cref{fig:profiles} overlays the final mean-force, free-energy and
+reaction-coordinate-marginal profiles. All practical methods recover
+$\Fpref$ and $\Fref$ well; the visible differences between ABF only and
+ABF+FR estimated at the final budget are small, consistent with the modest
+final-error improvements. The $x$-marginal (panel c) is somewhat flatter under
+FR, as intended, but marginal flatness is a diagnostic, not the goal.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.97\textwidth]{fig03_final_profiles.png}
+  \caption{Final profiles (mean over seeds) for the selected configurations.
+    (a) Mean force $\Fphat(x)$ and (b) centred free energy $\Fhat(x)$ versus the
+    reference (dashed); (c) reaction-coordinate marginal $\phat(x)$, with the
+    unbiased $\pref$ (dotted). Practical methods recover the reference well; FR
+    mildly flattens $\phat$.}
+  \label{fig:profiles}
+\end{figure}
+
+\Cref{fig:ablation} shows the distribution, over the \NFRconfigs{}
+configurations of each target type, of the seed-median errors. For the
+\emph{integrated} error all three FR target types have medians below the
+ABF-only baseline, but the spread is wide and some configurations are
+\emph{worse} than ABF, so FR does not help unconditionally. For the \emph{final}
+$\Ltwo(F)$ the estimated and uniform medians sit essentially on the ABF baseline,
+and on the final \emph{mean-force} error they lie slightly \emph{above} it ---
+only the oracle control is consistently below. Flattening the marginal with an
+imperfect target buys early speed but not final mean-force accuracy.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.97\textwidth]{fig04_target_ablation.png}
+  \caption{Target-type ablation: each box is the distribution over the
+    \NFRconfigs{} configurations of a target type (each point a seed-median);
+    the dashed line is the ABF-only median. FR lowers the \emph{integrated}
+    error (left) but the practical targets barely change the \emph{final}
+    $\Ltwo(F)$ (middle) and slightly raise the final mean-force error (right).
+    Only the oracle diagnostic improves all three.}
+  \label{fig:ablation}
+\end{figure}
+
+\subsubsection{Two selection rules give different ``best'' hyperparameters}
+\label{sec:selection}
+Because integrated and final errors measure different things, they need not be
+optimised by the same configuration. Selecting by \emph{integrated} $\Ltwo(F)$
+(\cref{tab:main_integrated}) favours fast convergence and selects an aggressive
+configuration for the estimated target ($\gamma=\EstIntGamma$, burn-in
+$\EstIntBurnin$); selecting by \emph{final} $\Ltwo(F)$ (\cref{tab:main_final})
+favours final-budget accuracy and selects a gentle, delayed configuration
+($\gamma=\EstFinGamma$, burn-in $\EstFinBurnin$), which improves the final
+free-energy error by $\EstFinFinalImpPct\%$ and beats ABF on $\EstFinProb\%$ of
+matched seeds. This dependence on the selection rule is itself a finding.
+
+\input{tables/best_configs_by_final_F.tex}
+
+The \emph{uniform} target is competitive here (integrated reduction
+$\UniIntegImpPct\%$): under a near-converged bias $\Bt\approx F$ the canonical
+biased marginal is already close to uniform, so ``flatten $\phat$'' and ``match
+the biased marginal'' nearly coincide. The \emph{oracle} diagnostic
+(\cref{rem:oracle}) achieves the lowest errors of all (integrated reduction
+$\OracIntegImpPct\%$), but it requires $\Fref$ and is unusable; the correct
+reading is comparative: the estimated target captures $\EstIntegImpPct\%$ of the
+reduction against the oracle's $\OracIntegImpPct\%$, so a substantial part of the
+mechanism's potential is left unrealised by the online target estimate. In this
+easy regime, then, the oracle--estimated gap localises the practical bottleneck
+in the \emph{target estimation} --- a reading we revisit, and qualify, in
+\cref{sec:synthesis}.
+
+\subsection{Mechanism}
+\label{sec:mechanism}
+The mechanism is a feedback loop between coverage and the mean-force estimate.
+ABF needs samples \emph{across} the reaction coordinate: by
+\eqref{eq:meanforce}, $\Fpref(x)$ is a conditional average that can only be
+estimated where particles visit $x$. Early in a run the bias is poor and the
+ensemble is unbalanced --- \cref{fig:mechanism}(b) shows the initial occupancy
+split ($\sim\!0.5$ in one basin) relaxing only gradually toward the balanced
+$1/3$--$1/3$--$1/3$ split. FR compares $\phat_t$ with the target $q_t$ and
+preferentially kills over-represented and clones under-represented particles
+\eqref{eq:death}, raising the useful coverage of $x$ earlier than diffusion
+alone would. Provided the birth--death does not corrupt $Y\mid X=x$
+(\cref{prop:cond_invariance}), better coverage feeds back into a better
+conditional mean-force estimate.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{fig05_mechanism.png}
+  \caption{Mechanistic / early-time behaviour, estimated FR (best
+    integrated-rule config) versus ABF only. (a) Early-time free-energy error
+    (log scale): FR converges faster. (b) Region occupancy under FR relaxes
+    from an unbalanced start toward the balanced $1/3$ split (dotted).
+    (c) Cumulative barrier crossings are nearly identical --- the benefit here
+    is redistribution, not a large increase in raw crossings. (d) FR score
+    dispersion decays as $\phat_t\to q_t$.}
+  \label{fig:mechanism}
+\end{figure}
+
+A notable feature of \cref{fig:mechanism}(c) is that FR does \emph{not} produce
+many more barrier crossings than ABF; the benefit comes from \emph{reallocating}
+existing replicas toward starved values of $x$ rather than from manufacturing
+rare transitions. Consistent with this, the event fractions are of order
+$10^{-5}$: in the successful regimes FR is a \emph{weak} correction.
+
+\subsubsection{FR does not visibly corrupt \texorpdfstring{$Y\mid X=x$}{Y given X}}
+\Cref{fig:conditional} compares the conditional fidelity of all methods at the
+final time. The FR variants are \emph{not} worse than ABF only; near the barrier
+($x\in\{-0.5,0,0.5\}$), where ABF-only under-samples, they are in fact slightly
+\emph{better} on both the $\Ltwo$ and KL conditional metrics --- direct evidence
+that the FR mechanism improves $x$-coverage without corrupting the orthogonal
+sampling, the benign behaviour \cref{prop:cond_invariance} requires.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{fig06_conditional_y_given_x.png}
+  \caption{Conditional $Y\mid X=x$ fidelity at $T$, by $x$-bin: (a) $\Ltwo$
+    distance and (b) KL divergence of $\phat(y\mid x)$ to $\pref(y\mid x)$. FR
+    does not inflate the conditional error; near the barrier it slightly reduces
+    it. \emph{Limitation:} the conditional CSV identifies runs only by (method,
+    target, seed) and is aggregated over configurations (\cref{rem:cond_limit}).}
+  \label{fig:conditional}
+\end{figure}
+
+\begin{remark}[Conditional diagnostics are not configuration-resolved]
+\label{rem:cond_limit}
+The metastability conditional-diagnostics output records only (method, target
+type, seed) per row, not the FR hyperparameters. It supports the \emph{aggregate}
+statement that successful FR does not visibly corrupt $Y\mid X=x$, but cannot
+isolate a specific ``good'' versus ``bad'' configuration's effect. The
+entropic-bottleneck case (\cref{sec:case_eb}) closes this gap with an
+\emph{analytic} conditional law.
+\end{remark}
+
+\subsubsection{What determines a good FR?}
+\label{sec:q3}
+\Cref{fig:hyper} (estimated target) shows the integrated error decreasing as
+$\gamma$ grows --- a stronger correction converges faster, which is why the
+integrated rule selects the aggressive $\gamma=\EstIntGamma$ --- but the same
+setting does \emph{not} minimise the final error (\cref{sec:selection}): there is
+an explicit speed-versus-accuracy trade-off in $\gamma$. The marginal bandwidth
+$\eta$ is robust at intermediate values, and an early burn-in helps the
+integrated error here because the largest imbalance is at early times. Across the
+successful configurations the event fractions are tiny ($\sim10^{-5}$) and the
+cap $f_{\max}$ never binds, so particle diversity is preserved.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{fig07_hyperparameter_heatmaps.png}
+  \caption{Estimated-target FR hyperparameter sensitivity: median integrated
+    $\Ltwo(F)$ over the grid (lower = faster convergence). Left: $\gamma$ versus
+    $\eta$; right: $\gamma$ versus burn-in fraction. The integrated error
+    improves with larger $\gamma$ and earlier burn-in; intermediate $\eta$ is
+    robust. These trends should not be extrapolated beyond this regime.}
+  \label{fig:hyper}
+\end{figure}
+
+\subsection{Case finding}
+\label{sec:q1}
+On this easy metastability example the answer to Q1 is \emph{yes, but modestly,
+and chiefly as a convergence accelerator}. Practical estimated-target FR improves
+the integrated free-energy error by $\EstIntegImpPct\%$ with a smaller
+final-budget gain; the improvement is real but not a rescue, and it is not
+unconditional. Because plain ABF already converges well here, the room for FR to
+help is small. The oracle control does best, which --- read \emph{within this
+regime} --- points to target estimation as the practical bottleneck; we will see
+in \cref{sec:case_eb,sec:case_wca} that this reading does not survive into the
+starved regimes, where the oracle's advantage vanishes or reverses.

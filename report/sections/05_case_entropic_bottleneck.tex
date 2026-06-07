@@ -1,0 +1,177 @@
+\section{Case II: an entropic bottleneck}
+\label{sec:case_eb}
+
+The second system tightens a transverse channel at the barrier top and, by
+lowering the temperature, drives ABF into a genuinely sample-starved regime. It
+also has a rare luxury: the conditional law $Y\mid X=x$ is \emph{analytic}, so we
+can test \cref{prop:cond_invariance} directly rather than against a histogram.
+
+\subsection{Model potential and reference}
+The potential couples a symmetric double well in $x$ to a transverse harmonic
+channel whose stiffness varies with $x$,
+\begin{equation}
+  V(x,y) = H\,(x^2-1)^2 + \tfrac12\,\omega(x)^2\,y^2,\qquad
+  \omega(x) = \omega_{\mathrm{out}} +
+    (\omega_{\mathrm{in}}-\omega_{\mathrm{out}})\,e^{-x^2/2s^2},
+  \label{eq:eb_potential}
+\end{equation}
+with reaction coordinate $\xib(x,y)=x$. The stiffness $\omega(x)$ is large near
+$x=0$ (a \emph{narrow channel at the barrier top}) and relaxes to
+$\omega_{\mathrm{out}}$ in the wells. Because the $y$-integral is Gaussian, the
+reference is analytic up to a constant:
+\begin{equation}
+  \Fref(x) = H\,(x^2-1)^2 + \beta^{-1}\log\omega(x) + C,\qquad
+  \Fpref(x) = 4H\,x\,(x^2-1) + \beta^{-1}\,\omega'(x)/\omega(x),
+  \label{eq:eb_ref}
+\end{equation}
+and, crucially, the conditional law is the exact Gaussian
+\begin{equation}
+  Y\mid X=x \;\sim\; \mathcal N\!\bigl(0,\;1/(\beta\,\omega(x)^2)\bigr).
+  \label{eq:eb_conditional}
+\end{equation}
+The base regime is $\beta=8$, $H=2.5$, $\omega_{\mathrm{out}}=1$,
+$\omega_{\mathrm{in}}=25$, $s=0.25$, with $N=256$ walkers, $\mathrm{d}t=10^{-3}$,
+and $40\,000$ steps. The free energy is gauged at $x=0$ and all $\Ltwo$ errors are
+RMS over the interior window $x\in[-1.5,1.5]$.
+
+\paragraph{Why this is an entropic bottleneck --- and an honest caveat.}
+Near $x=0$ the accessible $y$-width shrinks like $1/\omega(x)$: at the base
+setting the transverse channel is $\omega_{\mathrm{in}}/\omega_{\mathrm{out}}=25$,
+i.e.\ its standard deviation is $25\times$ narrower than in the wells,
+contributing an \emph{entropic}
+term $\beta^{-1}\log\omega(x)$ to the free energy. We are explicit, however, that
+in this parameterisation the entropic barrier $\beta^{-1}\log\omega_{\mathrm{in}}
+\approx 0.4$ is small next to the energetic barrier $4H\approx10$ (in $F$-units).
+The bottleneck modulates the transverse width but is \emph{not} the dominant
+contributor to reaction-coordinate starvation; that role belongs to the energetic
+double well. This matters for reading the $\omega_{\mathrm{in}}$ sweep below.
+
+\subsection{Methods and design}
+The practical comparison is again \textbf{ABF only} versus \textbf{ABF+FR
+estimated}~\eqref{eq:q_est}, on matched seeds (identical initial conditions and
+Langevin noise per seed). The diagnostics \textbf{FR uniform}~\eqref{eq:q_unif}
+and \textbf{FR oracle}~\eqref{eq:q_oracle} (built from the analytic $\Fref$, hence
+not deployable, \cref{rem:oracle}) are also run. The FR hyperparameters are listed
+in \cref{tab:eb_design}; an assertion guards every batched call so the reference
+never reaches the estimated target.
+
+\input{tables/eb_design.tex}
+
+\subsection{Results}
+At the base regime the practical method reduces the median final free-energy
+error from $\EBabfLtwoF$ (ABF) to $\EBfrLtwoF$ (ABF+FR estimated), a
+$\EBgainStrong\%$ reduction, winning $\EBcoldWin$ of $20$ matched seeds
+(\cref{fig:eb_convergence}). Two diagnostics are immediately revealing. The
+\emph{uniform} target --- which carries no information about the free-energy
+shape at all --- recovers almost the entire gain ($\EBuniGain\%$), while the
+\emph{oracle} target (the \emph{analytic} $\Fref$) is \emph{worse than plain ABF}
+($\EBoracleGain\%$). This is the opposite of the metastability ranking
+(\cref{sec:q1}): here a target that over-commits to a fixed shape fights the ABF
+bias instead of merely equalising coverage. The signature points to
+\emph{balanced resampling / variance reduction across the reaction coordinate}, not
+free-energy-shape steering, as the source of the gain.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{fig_eb_01_convergence.png}
+  \caption{Entropic bottleneck, convergence (median and inter-quartile range
+    over seeds). ABF+FR estimated separates from ABF early and stays below it for
+    the entire trajectory on both the free-energy (left) and mean-force (right)
+    errors.}
+  \label{fig:eb_convergence}
+\end{figure}
+
+\subsubsection{Temperature governs the gain, not the bottleneck width}
+Varying the inverse temperature $\beta$ at fixed $\omega_{\mathrm{in}}=25$
+(\cref{tab:eb_beta}) is the cleanest mechanistic signal in the study. FR
+\emph{helps when sampling is hard and hurts when it is easy}: at high temperature
+($\beta=2,4$) crossings are frequent, ABF already samples the whole coordinate
+(its error is $\sim0.05$), and FR's birth--death merely injects resampling noise
+--- it is mildly harmful and loses most seeds ($\EBwarmGainBetaFour\%$ at
+$\beta=4$). At low temperature ($\beta=8,12$) crossings are rare, ABF is starved
+on the far side of the barrier (error $0.2$--$0.4$), and FR's balanced resampling
+substantially repairs the coverage, winning every seed. The cross-over sits
+between $\beta=4$ and $\beta=8$.
+
+\input{tables/eb_beta.tex}
+
+By contrast, sweeping the bottleneck width $\omega_{\mathrm{in}}$ at fixed
+$\beta=8$ (\cref{fig:eb_omega}) leaves the gain essentially \emph{flat} at
+$\sim50\%$. This is the honest consequence of the caveat above: the ABF baseline
+error is nearly independent of $\omega_{\mathrm{in}}$ because the
+$\omega$-independent energetic barrier dominates the sampling difficulty. The
+gain is large and reliable across $\omega_{\mathrm{in}}$, but it is governed by
+metastability (temperature), not by the bottleneck width. We do not claim a
+bottleneck-strength scaling the data do not show.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{fig_eb_02_omega.png}
+  \caption{Bottleneck-width sweep $\omega_{\mathrm{in}}$ at $\beta=8$. The FR gain
+    is large ($\sim50\%$) and $100\%$ reliable at every width, but it does
+    \emph{not} grow with the bottleneck strength: the ABF baseline error is flat
+    because the energetic barrier $4H\approx10$ dominates the sub-unit entropic
+    barrier $\beta^{-1}\log\omega_{\mathrm{in}}$.}
+  \label{fig:eb_omega}
+\end{figure}
+
+\subsubsection{A wide safe regime for the FR rate}
+Sweeping the birth--death rate $\gamma$ at the base regime
+(\cref{fig:eb_gamma}), the gain increases \emph{monotonically} up to
+$\gamma=50$ ($+\EBgammaMaxGain\%$); we did not reach a failure boundary within the
+swept range. The windowed ancestor effective sample size falls steadily from
+$\EBessHi$ to $\EBessLo$ as lineage diversity collapses, yet the free-energy error
+keeps improving. This differs from the WCA dimer (\cref{sec:case_wca}), where
+aggressive birth--death eventually degrades the estimator; the likely reason is
+the very short conditional-relaxation time of the analytic $y$-channel here, so a
+cloned walker re-equilibrates its orthogonal coordinate almost immediately. FR is
+unusually robust in this model.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{fig_eb_03_gamma.png}
+  \caption{FR-rate sweep $\gamma\in\{1,\dots,50\}$ at the base regime. Left: gain
+    over ABF increases monotonically (no failure boundary in range). Right:
+    windowed ancestor ESS collapses ($\EBessHi\to\EBessLo$) and the replacement
+    fraction rises, yet accuracy keeps improving.}
+  \label{fig:eb_gamma}
+\end{figure}
+
+\subsection{Mechanism: conditional fidelity from an analytic law}
+Because $Y\mid X=x\sim\mathcal N(0,1/(\beta\omega(x)^2))$ is \emph{analytic}
+\eqref{eq:eb_conditional}, we can test \cref{prop:cond_invariance} directly rather
+than against a noisy histogram --- the gap that \cref{rem:cond_limit} left open in
+the metastability case. \Cref{fig:eb_conditional} compares the empirical
+$\widehat{\mathrm{Var}}(Y\mid X\in I_j)$ to $1/(\beta\omega(x_j)^2)$ at five
+$x$-bins. \textbf{FR preserves the conditional law}: at every bin the FR variance
+tracks the analytic value as well as ABF does, across nearly three orders of
+magnitude (from $\sim2\times10^{-4}$ at the bottleneck $x=0$ to $\sim0.12$ in the
+wells), including the extremely narrow channel at $x=0$. The residual errors are
+dominated by bin-count noise, not by any systematic FR distortion. The
+free-energy improvement is therefore achieved \emph{without} corrupting the
+orthogonal degrees of freedom --- exactly the benign behaviour
+\cref{prop:cond_invariance} requires, now confirmed against an exact
+conditional.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{fig_eb_04_conditional.png}
+  \caption{Conditional fidelity against the \emph{analytic} law
+    $\mathrm{Var}(Y\mid X=x)=1/(\beta\omega(x)^2)$. Empirical FR and ABF variances
+    both track the analytic curve across three orders of magnitude; FR is not
+    worse than ABF at any bin, including the narrow channel at $x=0$.}
+  \label{fig:eb_conditional}
+\end{figure}
+
+\subsection{Case finding}
+The entropic bottleneck is a controlled bridge between the easy metastability case
+and the hard WCA dimer. Estimated-target FR robustly and substantially reduces the
+free-energy error in the cold, sample-starved regime ($\sim\EBgainStrong\%$,
+$\EBcoldWin/20$ seeds), but the gain is governed by \emph{temperature} (FR helps
+when ABF is starved, mildly hurts when it is not), not by the bottleneck width.
+The mechanism is balanced resampling / variance reduction, not shape steering:
+the uniform target nearly matches the estimated one and the oracle target is
+\emph{worse} than ABF --- the reverse of the metastability ranking. The safe FR
+regime is wide (no failure boundary up to $\gamma=50$), and, thanks to the
+analytic conditional, we confirm directly that successful FR does not corrupt
+$Y\mid X=x$.

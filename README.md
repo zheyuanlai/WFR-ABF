@@ -1,12 +1,43 @@
 # Adaptive Biasing Force (ABF) with Fisher-Rao for Free Energy Computation
 
-This repository contains exploratory notebooks (`ABF-FR.ipynb`, `eABF.ipynb`,
-`WCA_dimer.ipynb`) and a reproducible, script-based study of whether a
-Fisher--Rao (FR) birth--death/resampling correction helps or hurts ABF on a 2D
-model potential. The notebooks are kept as reference only; the study below is
-driven entirely from the command line.
+This repository studies whether a Fisher--Rao (FR) birth--death/resampling
+correction helps or hurts the Adaptive Biasing Force (ABF) free-energy method,
+across **three systems of increasing difficulty**, each with an essentially exact
+reference:
 
-## 2D ABF-FR Fisher--Rao Ablation Study
+1. **Metastability** — a 2D double-well model potential (quadrature-exact
+   reference). The regime where ABF is already a strong baseline.
+   Notebook: `ABF-FR-Metastability.ipynb`.
+2. **Entropic bottleneck** — a 2D model with a narrow transverse channel, for
+   which both the reference free energy *and* the conditional law `Y | X = x` are
+   analytic. Temperature-tunable difficulty.
+   Notebook: `ABF-FR-Entropic-Bottleneck.ipynb`.
+3. **WCA dimer** — a many-body condensed-phase dimer in a dense solvent
+   (thermodynamic-integration reference, GPU). The starved regime.
+   Notebook: `WCA_dimer.ipynb`.
+
+The headline finding: **FR helps ABF in proportion to how sample-starved ABF is**
+— a modest convergence accelerator (and occasionally mildly harmful) where ABF
+already samples well, but a large and reliable win where ABF is starved. The
+dominant mechanism is balanced-resampling *variance reduction*, not
+free-energy-shape steering. The full write-up is in
+[`report/`](report/) (build with `make pdf`); per-case prose reports are in
+[`docs/`](docs/).
+
+| Case | Pipeline | Results | Report section |
+| --- | --- | --- | --- |
+| Metastability (2D) | `scripts/run_abf_fr_grid*.py` (see below) | `results/two_dim_xi_x/` | `report/sections/04_case_metastability.tex` |
+| Entropic bottleneck (2D) | `scripts/run_entropic_bottleneck_study.py`, `src/eb_abffr_core.py` | `results/entropic_bottleneck/` | `report/sections/05_case_entropic_bottleneck.tex` |
+| WCA dimer (many-body) | `scripts/run_wca_production.py`, `src/wca_abffr_core.py`, `configs/wca_production.yaml` | `results/wca_production/` | `report/sections/06_case_wca.tex` |
+
+The notebooks are kept as reference; the studies below are driven from the
+command line. The remainder of this document details **Case I** (the 2D
+metastability study and its GPU backend); the analysis scripts for Cases II and
+III are `scripts/analyze_*.py` / `scripts/plot_*.py`, and `report/README.md`
+documents how the manuscript figures and numbers are regenerated from all three
+result sets.
+
+## Case I: 2D ABF-FR Fisher--Rao Ablation Study
 
 ### Scientific goal
 

@@ -99,7 +99,27 @@ conditional average of $\partial_x V$ is an unbiased target for
 $\Fpref(x)$. Any modification of ABF must respect this property; in particular,
 a birth--death correction that resamples whole configurations $(x,y)$ is
 only admissible if it too leaves $Y\mid X=x$ (approximately) intact ---
-a hypothesis we test directly in \cref{sec:results,sec:mechanism}.
+a hypothesis we test directly in each of the three case studies
+(\cref{sec:case_meta,sec:case_eb,sec:case_wca}).
+
+\begin{remark}[Generalisation to many-body systems]
+\label{rem:manybody}
+Two of our three systems are two-dimensional with $\xib=x$, but the WCA dimer of
+\cref{sec:case_wca} is a many-body system: a configuration is the full vector
+$q\in\R^{2n}$ of all particle coordinates, and the reaction coordinate is a
+scalar \emph{collective variable} $z(q)$ (a scaled bond length) rather than a
+single Cartesian component. \Cref{prop:cond_invariance} holds verbatim under the
+substitution $x\mapsto z(q)$ and $y\mapsto$ the orthogonal complement of $z$ on
+the constant-$z$ manifold (here the solvent coordinates and the transverse dimer
+modes): a bias $B(z)$ that depends on the collective variable alone is constant
+on each level set of $z$, so it cancels in the conditional density and leaves the
+law of all orthogonal degrees of freedom invariant. Consequently the mean force
+along $z$ --- which for a nonlinear $z(q)$ also carries a geometric term
+(\cref{sec:case_wca}) --- is still estimated without bias. The only requirement
+the FR step must meet is the same one as in two dimensions: a clone must copy the
+\emph{entire} configuration $q\in\R^{2n}$, so that the orthogonal coordinates
+travel with $z$ and the conditional law is preserved.
+\end{remark}
 
 \subsection{The ABF mean-force estimator}
 \label{sec:abf_estimator}

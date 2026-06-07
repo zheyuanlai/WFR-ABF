@@ -1,0 +1,74 @@
+\section{Discussion, limitations, and future directions}
+\label{sec:discussion}
+
+\subsection{What the three cases establish (Q4)}
+The original single-case study could only ask whether FR was ``icing on the
+cake'' (a mild accelerator when ABF already works) or ``snow in the winter'' (a
+rescue when ABF alone struggles), and explicitly deferred the question to harder
+regimes. The two new cases \emph{are} those harder regimes --- lower temperature,
+fewer particles, and a condensed phase --- and the answer is now \emph{both}: FR
+is icing for easy ABF (metastability; hot bottleneck) and snow for starved ABF
+(cold bottleneck; dense WCA dimer), with the transition governed by how
+sample-starved ABF is (\cref{sec:synthesis}).
+
+\subsection{Limitations}
+We remain deliberately conservative about scope.
+\begin{enumerate}
+  \item \textbf{The reaction coordinates are low-dimensional.} All three systems
+        use a one-dimensional reaction coordinate (a Cartesian component in the
+        2D cases, a scalar bond length in WCA). Multi-dimensional or strongly
+        curved collective variables, where the geometric mean-force term and the
+        conditional sampling are far harder, are untested.
+  \item \textbf{The oracle target is not a method.} In every case the oracle uses
+        the reference free energy, the unknown being computed, and is reported
+        only as a diagnostic control (\cref{rem:oracle}). Its behaviour is read
+        only comparatively; notably, it is \emph{not} uniformly best --- it is
+        worse than ABF in the entropic bottleneck --- which is itself part of the
+        synthesis, not a deployable result.
+  \item \textbf{Production estimators are validated surrogates.} The 2D GPU
+        backend uses a binned-smoothed mean-force/marginal estimator and a
+        vectorised fixed-$N$ birth--death; the WCA backend uses a constrained
+        projection with the geometric term. These pass their validation suites
+        and agree with the kernel/TI references to within tolerance, but are not
+        bit-identical to the original kernel notebook implementation.
+  \item \textbf{Metastability conditional diagnostics are not
+        configuration-resolved} (\cref{rem:cond_limit}). The entropic-bottleneck
+        case closes this gap with an analytic conditional law, but only for that
+        model; the WCA conditional fidelity is argued structurally
+        (\cref{rem:manybody}) rather than measured per configuration.
+  \item \textbf{The entropic barrier is sub-dominant in Case II.} As stated in
+        \cref{sec:case_eb}, the bottleneck modulates the transverse width but the
+        energetic double well dominates the difficulty; the $\omega_{\mathrm{in}}$
+        sweep is honestly flat, and we do not claim a bottleneck-strength scaling.
+\end{enumerate}
+
+\subsection{Failure modes}
+The analysis points to a single unifying failure mechanism, diversity collapse,
+plus target misspecification (\cref{sec:synthesis}). First, an \emph{overly
+aggressive mechanism} erodes ancestor diversity faster than the orthogonal
+coordinates can re-decorrelate clones; this is realised in the WCA dimer for
+\texttt{fr\_rate}$\ge1$ in the rate ladder (the benefit reverses, ancestor ESS
+$\to\!20$), with even \texttt{fr\_rate}$=0.5$ turning harmful at production budget,
+and is masked in the entropic bottleneck only because its analytic channel
+re-equilibrates instantly. The safe FR rate must therefore be calibrated to the
+orthogonal relaxation time of the system. Second, a \emph{noisy or biased target}
+caps the attainable benefit; the metastability oracle--estimated gap quantifies
+the headroom in the easy regime, while the entropic-bottleneck oracle shows that
+in a starved regime an over-committed target can do worse than a neutral uniform
+one.
+
+\subsection{Future directions}
+\begin{itemize}
+  \item \textbf{Adaptive, diversity-aware FR strength.} Tie \texttt{fr\_rate}/
+        $\gamma$ to a measured ancestor-ESS or orthogonal-relaxation signal, so
+        the rate self-limits before diversity collapses --- capturing the
+        early-time speed of an aggressive rate without the late-time failure.
+  \item \textbf{Higher-dimensional and curved reaction coordinates}, where
+        conditional sampling is genuinely hard and the geometric term is
+        nontrivial.
+  \item \textbf{Configuration-resolved conditional diagnostics} for the many-body
+        case, to measure (not just argue) conditional fidelity per hyperparameter.
+  \item \textbf{Sharper entropic stressors.} A model in which the entropic barrier
+        dominates the energetic one would test whether the bottleneck width, not
+        just the temperature, can drive the gain.
+\end{itemize}

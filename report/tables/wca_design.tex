@@ -1,0 +1,24 @@
+\begin{table}[t]
+\centering
+\small
+\caption{WCA dimer base system and tuned Fisher--Rao hyperparameters.}
+\label{tab:wca_design}
+\begin{tabular}{ll}
+\toprule
+Quantity & Value \\
+\midrule
+Inverse temperature $\beta$ & 1 \\
+Time step $\Delta t$ & 0.002 \\
+Steps per run & 250{,}000 \\
+Replicas $N$ & 1024 \\
+Lattice spacing $a$ & 1.5 \\
+Dimer barrier $h$, width $w$ & 2, 2 \\
+FR rate \texttt{fr\_rate} & 0.10 \\
+FR onset \texttt{fr\_start\_steps} & 20{,}000 \\
+FR stride \texttt{fr\_every} & 5 \\
+Score clip $S_{\max}$ & 2.0 \\
+Event cap $f_{\max}$ & 0.02 \\
+Target EMA rate & 0.005 \\
+\bottomrule
+\end{tabular}
+\end{table}

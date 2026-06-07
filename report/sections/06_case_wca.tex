@@ -1,0 +1,181 @@
+\section{Case III: a condensed-phase WCA dimer}
+\label{sec:case_wca}
+
+The third system is many-body and is where ABF is most starved: a dimer that must
+push a dense solvent aside to change its bond length. It tests whether the
+two-dimensional findings survive in a setting with thousands of degrees of freedom
+and a nonlinear collective variable.
+
+\subsection{Model and reference}
+A dimer of two tagged particles sits in a periodic two-dimensional bath of
+$n_{\mathrm{dim}}^2-2$ Weeks--Chandler--Andersen (WCA) solvent particles
+($n_{\mathrm{dim}}=10$, lattice spacing $a$, box $L=n_{\mathrm{dim}}\,a$). All
+particles interact through the purely repulsive WCA
+potential~\citep{WeeksChandlerAndersen1971} (Lennard--Jones cut and shifted at its
+minimum $r_0=2^{1/6}\sigma$). The two dimer particles additionally feel a symmetric
+double-well bond $V_{\mathrm{dim}}(r)=h\,(1-((r-r_0-w)/w)^2)^2$ with barrier
+height $h=2$ and width $w=2$. The reaction coordinate is the scaled bond length
+\begin{equation}
+  z(q) = \frac{|q_1-q_2|-r_0}{2w},
+  \label{eq:wca_cv}
+\end{equation}
+a nonlinear collective variable of the full configuration $q\in\R^{2n}$
+(\cref{rem:manybody}): $z\approx0$ is the \emph{compact} state, $z\approx1$ the
+\emph{stretched} state, and $z\in[0.25,0.75]$ the \emph{transition} region. The
+free-energy barrier near $z=0.5$ is partly entropic / crowding-driven, since the
+dimer must displace solvent to cross it. Dynamics are overdamped Langevin at
+$\beta=1$, $\mathrm{d}t=0.002$, with the minimum-image convention; the default
+system is $a=1.5$, $\sigma=\epsilon=1$. The local mean force along $z$ is the
+constrained projection of the physical forces plus the geometric $2w/(\beta r)$
+term (\cref{rem:manybody}). The reference $F(z)$ is computed once per system $a$ by
+constrained-MD thermodynamic integration~\citep{Carter1989,DenOtterBriels1998}
+and used for evaluation only; errors are taken on the interior window
+$z\in[-0.1,1.1]$ with the additive constant aligned.
+
+\subsection{Methods and design}
+As before the practical comparison is \textbf{ABF only} versus \textbf{ABF+FR
+estimated}~\eqref{eq:q_est}, with \textbf{FR uniform} and \textbf{FR oracle}
+diagnostics; here the oracle target is built from the TI reference and is
+explicitly \emph{not} deployable (\cref{rem:oracle}). A no-leakage assertion
+ensures only the oracle method ever receives the reference, and a clone copies the
+\emph{entire} WCA configuration --- not just $z$ --- so cloned solvent
+arrangements travel with the bond length. Replica lineage is tracked to report the
+ancestor effective sample size $\mathrm{ESS}=1/\sum_a w_a^2$. The tuned FR
+configuration is given in \cref{tab:wca_design}; the rate is named
+\texttt{fr\_rate} and the onset \texttt{fr\_start\_steps} (\cref{sec:fr_notation}).
+
+\input{tables/wca_design.tex}
+
+\subsection{Results}
+The main comparison (\cref{tab:wca_main}; 10 seeds, $N=1024$, $250\,000$ steps)
+shows the practical method \textbf{reliably beating ABF}: the tuned FR cuts the
+median final $\Ltwo(F)$ from $\WCAabfLtwoF$ to $\WCAtunedLtwoF$
+(\,$+\WCAtunedGainPct\%$\,), winning all $\WCAtunedWin/10$ matched seeds. As in the
+entropic-bottleneck case, the uniform target ($+\WCAuniGainPct\%$) and the oracle
+target ($+\WCAoracleGainPct\%$) are \emph{essentially as good as} the estimated
+target --- the online estimated target already extracts nearly all the available
+benefit, and there is no headroom to the oracle. We are explicit that the headline
+gain is in the \emph{free energy}: the mean-force error $\Ltwo(F')$ improves only
+modestly ($\approx22\%$), so we do not claim a large mean-force improvement.
+
+\input{tables/wca_main.tex}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{fig_wca_01_convergence.png}
+  \caption{WCA dimer, convergence (median and inter-quartile range over seeds).
+    ABF and FR are identical until FR activates; from then on FR is consistently
+    below ABF on $\Ltwo(F)$ for the rest of the run. The cumulative replacement
+    count (right) confirms the birth--death is active but bounded.}
+  \label{fig:wca_convergence}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{fig_wca_02_profiles.png}
+  \caption{Final profiles (median over seeds) versus the TI reference (dashed):
+    (a) free energy $\Fhat(z)$, (b) mean force $\Fphat(z)$, (c) reaction-coordinate
+    marginal. FR recovers the reference free energy more accurately than ABF,
+    chiefly in and around the transition region.}
+  \label{fig:wca_profiles}
+\end{figure}
+
+\subsection{Mechanism: resampling-driven variance reduction}
+The diagnostics support the same mechanism as the entropic bottleneck rather than
+a coverage-reshaping one. Final reaction-coordinate region fractions and the
+fraction of effective ABF samples in the transition window are nearly identical
+across ABF, FR estimated, FR uniform and FR oracle: FR does \emph{not} converge to
+a different stationary $z$-distribution. Instead the gain appears immediately after
+FR activates and is sustained for the rest of the run. \Cref{fig:wca_mechanism}
+shows the interpretation: birth--death acts as a \emph{variance-reduction
+resampler for the ABF estimator}. Replicas stuck in over-represented
+configurations are replaced by whole-configuration clones of under-represented
+ones, raising the number of effectively-independent force samples per $z$-bin even
+when the marginal looks unchanged. Because the \emph{entire} WCA configuration is
+copied (\cref{rem:manybody}), clones inject decorrelated solvent arrangements,
+accelerating convergence of $\Fhat$ without requiring a different stationary
+coverage --- consistent with $\text{uniform}\approx\text{estimated}\approx
+\text{oracle}$.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{fig_wca_04_mechanism.png}
+  \caption{Mechanism. (a) Effective ABF sample count $N_{\mathrm{eff}}(z)$ is
+    raised by FR in the transition window; (b) per-bin mean-force error is reduced
+    there; (c) birth (clone) and death locations concentrate around the
+    over/under-sampled regions; FR reshapes the \emph{sampling quality}, not the
+    stationary marginal.}
+  \label{fig:wca_mechanism}
+\end{figure}
+
+\subsection{Failure boundary}
+Unlike the entropic bottleneck, the WCA dimer exhibits a clear failure boundary in
+the FR rate (\cref{fig:wca_failure}). The rate ladder (a shorter $150$k-step,
+$4$-seed stage) maps a clean safe regime: too gentle
+(\texttt{fr\_rate}$\le0.05$) gives a small gain ($+19$--$29\%$); the sweet spot
+(\texttt{fr\_rate}$\approx0.1$--$0.2$) gives the maximal $+58$--$64\%$ with healthy
+ancestor ESS; the gain then \emph{erodes} sharply
+(\texttt{fr\_rate}$=0.5$ falls to $+12\%$ with the error already climbing back
+toward the ABF baseline) and finally \emph{reverses} for
+\texttt{fr\_rate}$\ge1$, where the median final $\Ltwo(F)$ is worse than ABF
+($-38\%$ at rate $1$, $-68\%$ at rate $2$) and no seed wins, as the ancestor ESS
+collapses from $\sim\!337$ to $\sim\!20$. The reversal arrives even earlier under a
+longer budget: the production aggressive configuration (\texttt{fr\_rate}$=0.5$ at
+$250$k steps, $10$ seeds) is already net-harmful ($\WCAaggrGainPct\%$, winning only
+$1/10$ seeds, ancestor ESS $\sim\!22$), because the extra steps give diversity loss
+more time to dominate. Over-aggressive birth--death destroys the replica diversity
+the mean-force estimator depends on, so the estimator degrades faster than coverage
+improves. This is the predicted failure mode; the analytic $y$-channel of the
+entropic bottleneck masks it (\cref{sec:case_eb}) because cloned walkers
+re-equilibrate instantly, whereas a dense solvent does not.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{fig_wca_05_failure.png}
+  \caption{FR-rate ladder ($150$k steps, $4$ seeds). Final $\Ltwo(F)$ (left) is
+    minimised in the $0.1$--$0.2$ sweet spot, climbs back toward the ABF baseline
+    (dashed) by \texttt{fr\_rate}$=0.5$, and rises above it for
+    \texttt{fr\_rate}$\ge1$; ancestor ESS (right) collapses as the rate grows,
+    pinpointing diversity loss as the failure mechanism.}
+  \label{fig:wca_failure}
+\end{figure}
+
+\subsection{Difficulty dependence}
+Varying one difficulty axis at a time (\cref{fig:wca_difficulty}) shows the gain
+is robust and, importantly, \emph{grows with difficulty}. With \emph{budget}, FR
+wins at every $n_{\mathrm{steps}}$ and the relative advantage grows rather than
+washes out ($+\WCAbudgetLoGain\%$ at $50$k to $+\WCAbudgetHiGain\%$ at $400$k):
+ABF's error plateaus around $0.08$ after $\sim150$k while FR keeps descending, so
+FR is not merely an early-time accelerator that ABF later catches. With
+\emph{replica count}, the gain is roughly flat ($+51$--$59\%$ from $N=256$ to
+$2048$) --- FR helps even at $N=256$. With \emph{solvent crowding}, the densest
+bath ($a=1.35$) makes the entropic barrier severe and ABF $\sim4\times$ worse in
+absolute error; FR still wins $5/5$ and delivers by far the largest absolute error
+reduction ($\WCAdenseAbfErr\to\WCAdenseFrErr$). In the units a practitioner cares
+about --- absolute free-energy error removed --- the crowded regime is where FR
+helps most.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{fig_wca_06_difficulty.png}
+  \caption{Difficulty dependence (matched-seed gain over ABF). (a) Budget: the
+    relative gain grows with $n_{\mathrm{steps}}$ as ABF plateaus and FR keeps
+    improving. (b) Replica count: gain is roughly flat. (c) Solvent crowding:
+    smaller $a$ (denser) yields the largest absolute error reduction. FR wins
+    $5/5$ seeds in every cell.}
+  \label{fig:wca_difficulty}
+\end{figure}
+
+\subsection{Case finding}
+On the condensed-phase WCA dimer, ABF+FR with an online estimated target reliably
+and substantially improves free-energy accuracy: $+\WCAtunedGainPct\%$ in median
+final $\Ltwo(F)$ at the tuned operating point, winning $\WCAtunedWin/10$ seeds,
+with the gain concentrated in the free energy (not the mean force). The mechanism
+is balanced-resampling variance reduction after warm-up; the precise target shape
+matters little ($\text{uniform}\approx\text{estimated}\approx\text{oracle}$, and
+the estimated target already reaches the oracle's accuracy). The method has a clear
+safe regime, \texttt{fr\_rate}$\approx0.1$--$0.2$, and a real failure boundary:
+too-aggressive birth--death reverses the benefit as diversity collapses. The
+advantage \emph{grows with simulation budget}, is insensitive to replica count, and
+is largest in the densest, hardest solvent --- exactly the starved regime the
+variance-reduction mechanism predicts.

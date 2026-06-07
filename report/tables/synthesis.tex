@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Cross-case synthesis: the estimated-target FR gain grows with how sample-starved ABF is, while the value of the target \emph{shape} (oracle vs.\ estimated) shrinks. Metastability gain is on the integrated error; the others on final $\|F-F_{\rm ref}\|$.}
+\label{tab:synthesis}
+\begin{tabular}{lllll}
+\toprule
+Case & Regime & FR gain (\%) & wins & target effect \\
+\midrule
+Metastability & ABF strong & +11.5 (int.) & -- & oracle best \\
+Entropic bottleneck (hot, $\beta{=}4$) & ABF easy & -26.1 & 0/10 & n/a \\
+Entropic bottleneck (cold, $\beta{=}8$) & ABF starved & +51.3 & 20/20 & oracle worse \\
+WCA dimer & ABF starved & +55.0 & 10/10 & oracle $\approx$ est. \\
+\bottomrule
+\end{tabular}
+\end{table}

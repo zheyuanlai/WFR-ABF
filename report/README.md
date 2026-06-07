@@ -57,6 +57,23 @@ From `../results/two_dim_xi_x/`:
 | `production_gpu/production_gpu_fr_events.csv` | FR birth–death event stats (loaded; diagnostics) |
 | `production_gpu/production_gpu_conditional_diagnostics.csv` | conditional `Y\|X` errors → Fig. 6 |
 
+The metastability case (§1) uses `../results/two_dim_xi_x/`. The two additional
+cases re-render their figures in the report style (via `scripts/report_cases.py`)
+and read their headline numbers from already-aggregated summaries:
+
+| File | Used for |
+| --- | --- |
+| `../results/entropic_bottleneck/summaries/config_summary.csv` | EB β/ω/γ-sweep medians → `tab:eb_*`, EB macros |
+| `../results/entropic_bottleneck/summaries/arrays.npz` | EB convergence + analytic-conditional arrays → `fig_eb_01`, `fig_eb_04` |
+| `../results/wca_production/summaries/config_summary.csv` | WCA per-config medians → `tab:wca_*`, `fig_wca_03/05` |
+| `../results/wca_production/summaries/winrates.csv` | WCA matched-seed gains/winrates → WCA macros, `fig_wca_06` |
+| `../results/wca_production/summaries/timeseries_summary.csv` | WCA convergence bands → `fig_wca_01` |
+| `../results/wca_production/summaries/profiles_summary.npz` | WCA final profiles + mechanism → `fig_wca_02/04` |
+
+Unlike the metastability pipeline (which recomputes from per-run CSVs), the
+EB/WCA numbers are read from the published config-summary/winrate medians;
+`check_report_numbers.py` cross-checks them against those same summaries.
+
 Merged files are preferred; the `*__shard_000.csv` shards are a fallback only.
 `best_configs.csv`, `table_main_results.csv` and `table_production_gpu_top_configs.csv`
 already exist in the repo but are **not** trusted blindly: the report recomputes

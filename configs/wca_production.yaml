@@ -1,0 +1,183 @@
+# WCA dimer production study: ABF vs Fisher-Rao estimated-target.
+# The TI reference is EVALUATION ONLY (and the fr_oracle diagnostic). It never
+# enters the fr_estimated target. See docs/wca_production_report.md.
+
+experiment_name: wca_production
+output_root: results/wca_production
+cache_dir: cache
+
+# Base SimConfig block. Per-run knobs (n_steps, n_replicas, seed, fr_*) are
+# overridden per job by the stage / method definitions below.
+base:
+  dt: 0.002
+  save_every: 2500
+  z_min: -0.2
+  z_max: 1.2
+  n_grid: 160
+  abf_bandwidth: 0.025
+  kde_bandwidth: 0.070
+  abf_smooth_sigma: 0.5
+  mean_force_sample_clip: 500.0
+  use_clipped_force_for_mean_force: true
+  abf_bias_scale: 1.0
+  abf_edge_extrapolate: true
+  boundary_wall_strength: 80.0
+  abf_force_clip: 40.0
+  abf_warmup_steps: 10000
+  estimator_burn_in_steps: 10000
+  fr_start_steps: 20000
+  fr_every: 5
+  score_clip: 2.0
+  transition_lo: 0.25
+  transition_hi: 0.75
+  eval_z_lo: -0.1     # interior evaluation window (drop wall-affected edge bins)
+  eval_z_hi: 1.1
+
+# Default WCA system. Crowding axis (Stage D) overrides `a`.
+system:
+  n_dim: 10
+  a: 1.5
+  sigma: 1.0
+  epsilon: 1.0
+  h: 2.0
+  w: 2.0
+  beta: 1.0
+
+# Method configs reused across stages. `type` is the sampler method.
+# The locked demo winner is fr_rate=0.10, ema=0.005, mef=0.02, every=5, start=20k.
+methods:
+  abf:
+    type: abf
+  fr_est_gentle:
+    type: fr_estimated
+    fr_rate: 0.05
+    target_ema_rate: 0.005
+    max_event_fraction: 0.02
+    fr_every: 5
+    fr_start_steps: 20000
+    score_clip: 2.0
+  fr_est_tuned:
+    type: fr_estimated
+    fr_rate: 0.10
+    target_ema_rate: 0.005
+    max_event_fraction: 0.02
+    fr_every: 5
+    fr_start_steps: 20000
+    score_clip: 2.0
+  fr_est_strong:
+    type: fr_estimated
+    fr_rate: 0.20
+    target_ema_rate: 0.005
+    max_event_fraction: 0.02
+    fr_every: 5
+    fr_start_steps: 20000
+    score_clip: 2.0
+  fr_est_aggressive:
+    type: fr_estimated
+    fr_rate: 0.50
+    target_ema_rate: 0.005
+    max_event_fraction: 0.02
+    fr_every: 5
+    fr_start_steps: 20000
+    score_clip: 2.0
+  fr_uniform:
+    type: fr_uniform
+    fr_rate: 0.10
+    target_ema_rate: 0.005
+    max_event_fraction: 0.02
+    fr_every: 5
+    fr_start_steps: 20000
+    score_clip: 2.0
+  fr_oracle:
+    type: fr_oracle
+    fr_rate: 0.10
+    target_ema_rate: 0.005
+    max_event_fraction: 0.02
+    fr_every: 5
+    fr_start_steps: 20000
+    score_clip: 2.0
+
+# ---------------------------------------------------------------------------
+# Stages.
+# ---------------------------------------------------------------------------
+stages:
+
+  # Stage 0: reproduce the demo headline in script form.
+  stage0_reproduce:
+    n_steps: 250000
+    n_replicas: 1024
+    seeds: [42]
+    methods: [abf, fr_est_tuned]
+
+  # Stage A: staged pilot tuning (one/two factors at a time around the winner).
+  # n_steps reduced to 150k per the brief.
+  pilot:
+    n_steps: 150000
+    n_replicas: 1024
+    seeds: [7, 42, 123]
+    methods: [abf]                 # ABF baseline per seed
+    sweeps:
+      # each sweep entry expands fr_estimated runs varying ONE axis from the winner
+      - axis: fr_rate
+        values: [0.03, 0.05, 0.10, 0.20, 0.50]
+      - axis: target_ema_rate
+        values: [0.001, 0.003, 0.005, 0.01, 0.02]
+      - axis: max_event_fraction
+        values: [0.005, 0.02, 0.05]
+      - axis: fr_every
+        values: [1, 5, 10]
+      - axis: fr_start_steps
+        values: [10000, 20000, 40000]
+
+  # Stage B: main production comparison.
+  main:
+    n_steps: 250000
+    n_replicas: 1024
+    seeds: [0, 1, 2, 3, 4, 5, 6, 7, 42, 123]
+    methods: [abf, fr_est_gentle, fr_est_tuned, fr_est_strong, fr_est_aggressive, fr_uniform, fr_oracle]
+
+  # Stage D (difficulty): budget axis.
+  difficulty_budget:
+    n_replicas: 1024
+    seeds: [0, 1, 2, 3, 4]
+    methods: [abf, fr_est_tuned]
+    n_steps_values: [50000, 100000, 150000, 250000, 400000]
+
+  # Stage D (difficulty): replica axis.
+  difficulty_replicas:
+    n_steps: 250000
+    seeds: [0, 1, 2, 3, 4]
+    methods: [abf, fr_est_tuned]
+    n_replicas_values: [256, 512, 1024, 2048]
+
+  # Stage D (difficulty): solvent crowding axis.
+  difficulty_crowding:
+    n_steps: 250000
+    n_replicas: 1024
+    seeds: [0, 1, 2, 3, 4]
+    methods: [abf, fr_est_tuned]
+    a_values: [1.35, 1.5, 1.7]
+
+  # Failure-boundary mini-stage (fr_rate ladder, fewer seeds, for Figure 5).
+  failure:
+    n_steps: 150000
+    n_replicas: 1024
+    seeds: [0, 1, 2, 42]
+    methods: [abf]
+    sweeps:
+      - axis: fr_rate
+        values: [0.03, 0.05, 0.10, 0.20, 0.50, 1.0, 2.0]
+
+  # Tiny smoke stage (used by smoke_wca_production.py defaults).
+  smoke:
+    n_steps: 2000
+    n_replicas: 96
+    seeds: [42]
+    methods: [abf, fr_est_tuned, fr_uniform, fr_oracle]
+    base_overrides:
+      save_every: 200
+      abf_warmup_steps: 300
+      estimator_burn_in_steps: 300
+    knob_overrides:
+      fr_start_steps: 500
+      fr_every: 5
