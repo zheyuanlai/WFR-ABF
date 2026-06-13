@@ -41,6 +41,10 @@ def _v(d, k):
     return x
 
 
+def _uses_fr(method):
+    return str(method).startswith("fr_")
+
+
 def load_run(path, stage):
     with np.load(path, allow_pickle=True) as d:
         rec = {"stage": stage,
@@ -52,6 +56,11 @@ def load_run(path, stage):
         for k in ("final_l2_f", "final_l2_fp", "int_l2_f", "final_ess",
                   "n_die", "n_clone", "repl_fraction", "n_fr_apply"):
             rec[k] = float(_v(d, k))
+        if not _uses_fr(rec["method"]):
+            rec["n_die"] = 0.0
+            rec["n_clone"] = 0.0
+            rec["repl_fraction"] = 0.0
+            rec["n_fr_apply"] = 0.0
         ce = d["cond_abs_err"]
         rec["cond_abserr_mean"] = float(np.nanmean(ce))
         rec["cond_abserr_max"] = float(np.nanmax(ce))

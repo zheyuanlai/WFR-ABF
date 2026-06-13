@@ -1,34 +1,30 @@
 We study whether augmenting the Adaptive Biasing Force (ABF) method with a
 Fisher--Rao (FR) birth--death correction improves the computation of a
-reaction-coordinate free energy, and, if so, how the correction must be
-constructed. We test this on \emph{three} systems of increasing difficulty, each
-with an essentially exact reference: a two-dimensional double-well
-\emph{metastability} model (quadrature-exact reference); a two-dimensional
-\emph{entropic-bottleneck} model with a narrow transverse channel, for which both
-the reference free energy and the conditional law $Y\mid X=x\sim\mathcal
-N(0,1/(\beta\omega(x)^2))$ are analytic; and a many-body condensed-phase
-\emph{Weeks--Chandler--Andersen (WCA) dimer} in a dense solvent
-(thermodynamic-integration reference, GPU). In each case the FR step reallocates
-walkers along the reaction coordinate by killing replicas in over-represented
-regions and cloning whole configurations from under-represented regions, nudging
-the empirical marginal $\phat_t$ toward a target $q_t$. We compare ABF only against
-ABF+FR with an \emph{estimated}, \emph{uniform}, or \emph{oracle} target, on
-matched seeds. The central finding is that \textbf{FR helps ABF in proportion to
-how sample-starved ABF is}: a modest convergence accelerator --- and occasionally
-mildly harmful --- where plain ABF already samples well (metastability,
-$+\EstIntegImpPct\%$ integrated error; hot bottleneck, $\EBwarmGainBetaFour\%$),
-but a large and reliable win where ABF is starved (cold bottleneck,
-$+\EBgainStrong\%$, $\EBcoldWin/20$ seeds; WCA dimer, $+\WCAtunedGainPct\%$,
-$\WCAtunedWin/10$ seeds, the relative gain growing with simulation budget and the
-largest absolute error removed in the densest solvent). The dominant
-mechanism is \emph{balanced-resampling variance reduction}, not free-energy-shape
-steering: in the starved regimes a uniform target nearly matches the estimated one
-and an oracle target (which is allowed to use the reference $\Fref$, and is never a
-deployable method) is no better --- or, in the entropic bottleneck, \emph{worse}
-than ABF. The one failure mode is diversity collapse under too-aggressive
-birth--death (the WCA dimer's gain reverses once \texttt{fr\_rate} is pushed well
-past its sweet spot), bounded by how
-fast the system's orthogonal degrees of freedom re-equilibrate cloned replicas.
-Across all successful settings FR preserves the conditional law $Y\mid X=x$ on
-which ABF depends --- confirmed directly against the analytic conditional of the
-bottleneck model.
+reaction-coordinate free energy, and what kind of improvement it can reasonably be
+expected to provide. We test this on \emph{three} systems that deliberately probe
+different regimes: a two-dimensional double-well \emph{metastability} model with a
+quadrature reference; a two-dimensional \emph{entropic-bottleneck} model with a
+narrow transverse channel, for which both the reference free energy and the
+conditional law $Y\mid X=x\sim\mathcal N(0,1/(\beta\omega(x)^2))$ are analytic;
+and a many-body condensed-phase \emph{Weeks--Chandler--Andersen (WCA) dimer} in a
+dense solvent, evaluated against a high-accuracy thermodynamic-integration
+reference. In each case the FR step reallocates walkers along the reaction
+coordinate by killing replicas in over-represented regions and cloning whole
+configurations from under-represented regions, nudging the empirical marginal
+$\phat_t$ toward a target $q_t$.
+
+The central finding is not a single universal success story, but a regime map. In
+the metastability model, where plain ABF already samples reasonably well,
+estimated-target FR is a modest accelerator and the oracle diagnostic shows that
+target direction can matter. In the cold entropic bottleneck, ABF is starved and
+estimated-target FR gives a large gain ($+\EBgainStrong\%$, $\EBcoldWin/20$ seeds),
+but the uniform target nearly matches it and the oracle target is worse than ABF;
+here density correction and free-energy accuracy are not the same objective. In
+the WCA dimer, tuned FR again improves the free energy reliably
+($+\WCAtunedGainPct\%$, $\WCAtunedWin/10$ seeds), while the best accuracy occurs
+near the edge of an accuracy--diversity tradeoff. Across the cases, FR is best
+understood as a marginal-reallocation mechanism whose value depends on how starved
+the ABF estimator is, how quickly cloned orthogonal degrees of freedom
+re-equilibrate, and how aggressively birth--death erodes ancestor diversity. The
+oracle target is therefore a diagnostic control, not a deployable method and not a
+universal upper bound.

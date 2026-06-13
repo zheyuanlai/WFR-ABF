@@ -44,37 +44,40 @@ for stability. Its interpretation is direct:
 \end{itemize}
 
 \subsection{Birth--death resampling}
-The FR step realises the Fisher--Rao gradient flow of
-$\mathrm{KL}(\phat\Vert q)$ as a fixed-$N$ birth--death process. Over a sub-step
+The FR step approximates the Fisher--Rao gradient flow of
+$\mathrm{KL}(\phat\Vert q)$ as a fixed-$N$ particle reallocation. Over a sub-step
 of length $\Delta t$ and at effective rate $\gamma_n^{\mathrm{eff}}$
-(\cref{sec:schedule}), each \emph{over-represented} particle ($S_i>0$) is killed
-with probability
+(\cref{sec:schedule}), each \emph{over-represented} particle ($S_i>0$) is marked
+for death with probability
 \begin{equation}
   \mathbb P(\text{$i$ dies}) \;=\; 1-\exp\!\bigl(-\gamma_n^{\mathrm{eff}}\,S_i\,\Delta t\bigr),
   \label{eq:death}
 \end{equation}
-and every killed slot is overwritten by a \emph{clone} of an
-\emph{under-represented} particle, sampled from the pool $\{i:S_i<0\}$ with
-weights $\propto|S_i|$. Cloning copies the \emph{whole} configuration
-$(X^i,Y^i)$ --- the score depends only on $x$, but the $y$-coordinate must travel
-with its $x$-coordinate, or \cref{prop:cond_invariance} would be violated. The
-step is made deliberately gentle by three safeguards: (i) a burn-in and soft
-ramp on the rate; (ii) score clipping to $[-S_{\max},S_{\max}]$; and (iii) a hard
-cap $f_{\max}$ on the fraction of particles replaced per event
-(\texttt{max\_event\_fraction}), enforced by randomly sub-sampling deaths when
-the cap is exceeded. The numerical values of $S_{\max}$, $f_{\max}$ and the FR
-stride \texttt{fr\_every} are case-specific and are listed in each case's design
-table. Net effect: gently replace particles in crowded regions of $x$ by copies
-from starved regions, leaving $N$ fixed.
+and particles with $S_i<0$ supply clone sources. The WCA and metastability
+backends implement this in the direct death-replacement form: killed slots are
+filled by clones sampled from the under-represented pool, with weights increasing
+with $|S_i|$. The entropic-bottleneck backend uses a vectorised but closely
+related fixed-$N$ survivor/clone-pool variant. This distinction matters for exact
+diagnostics, but not for the mechanism studied here: all variants move mass along
+the reaction coordinate by copying whole configurations from under-represented
+regions into over-represented ones.
+
+Cloning copies the \emph{whole} configuration $(X^i,Y^i)$ --- the score depends
+only on $x$, but the $y$-coordinate must travel with its $x$-coordinate, or
+\cref{prop:cond_invariance} would be violated. The step is made deliberately
+gentle by three safeguards: (i) a burn-in and soft ramp on the rate; (ii) score
+clipping to $[-S_{\max},S_{\max}]$; and (iii) a hard cap $f_{\max}$ on the
+fraction of particles replaced per event (\texttt{max\_event\_fraction}). The
+numerical values of $S_{\max}$, $f_{\max}$ and the FR stride
+\texttt{fr\_every} are case-specific and are listed in each case's design table.
 
 \subsection{Notation across cases}
 \label{sec:fr_notation}
-The same FR mechanism is applied to all three systems, but two parameters carry
-different names in the analytic two-dimensional cases
-(\cref{sec:case_meta,sec:case_eb}) and in the many-body WCA study
-(\cref{sec:case_wca}), for consistency with each study's code. The
-birth--death \emph{rate} is written $\gamma$ in the analytic cases and
-\texttt{fr\_rate} in WCA; they play identical roles in~\eqref{eq:death}. The
+The same FR principle is applied to all three systems, but the implementation and
+two parameter names differ slightly across backends. The birth--death \emph{rate}
+is written $\gamma$ in the analytic two-dimensional cases
+(\cref{sec:case_meta,sec:case_eb}) and \texttt{fr\_rate} in WCA
+(\cref{sec:case_wca}); they play the same role in~\eqref{eq:death}. The
 \emph{onset} of FR is parameterised as a burn-in \emph{fraction} $b$ in the
 analytic cases (\eqref{eq:ramp}, $n_{\mathrm{burnin}}=\lfloor b\,
 n_{\mathrm{steps}}\rfloor$) and as an absolute step count
@@ -135,19 +138,19 @@ that, under a bias $\Bt\neq F$, the canonical biased marginal is not uniform.
 \begin{remark}[The oracle target is not an algorithm]
 \label{rem:oracle}
 Equation~\eqref{eq:q_oracle} replaces the estimated target free energy by the
-\emph{reference} free energy $\Fref$ --- which is exactly the unknown quantity
-the whole procedure is trying to compute. The oracle target therefore
-\emph{cannot} be evaluated in any real free-energy calculation. We include it
-solely as a \emph{diagnostic / positive / ideal-information control}: it
-measures how much the FR mechanism \emph{could} help if the target marginal
-direction were specified perfectly. Throughout this report the oracle is read
-only in that way; we never claim that ``oracle FR is the best method'' or that
-``one should use the oracle target''. The practical comparison is always
+\emph{reference} free energy $\Fref$ --- exactly the unknown quantity the whole
+procedure is trying to compute. The oracle target therefore \emph{cannot} be
+evaluated in any real free-energy calculation. We include it solely as an
+ideal-information diagnostic: it asks what the FR birth--death step would do if
+the target marginal were anchored to the reference. This is not a universal upper
+bound. If oracle FR improves on estimated FR in a given regime, the gap can be
+read as target-shape headroom; if it ties or loses, the diagnostic instead says
+that the limiting mechanism is not the online target estimate, and may even be a
+mismatch between a fixed reference-shaped target and the transient ABF bias. The
+practical comparison is always
 \[
-  \text{ABF only}\qquad\text{versus}\qquad\text{ABF}+\text{estimated-target FR},
+  \text{ABF only}\qquad\text{versus}\qquad\text{ABF}+\text{estimated-target FR}.
 \]
-and the estimated-versus-oracle gap is interpreted as the headroom available
-from improving the online target estimate.
 \end{remark}
 
 \subsection{The coupled ABF--FR step}

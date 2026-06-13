@@ -1,38 +1,25 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-Across three controlled systems with essentially exact references --- a 2D
-metastability model, a 2D entropic bottleneck with an analytic conditional law,
-and a many-body condensed-phase WCA dimer --- a Fisher--Rao birth--death
-correction helps the Adaptive Biasing Force method \emph{in proportion to how
-sample-starved ABF is}. When plain ABF already samples well the practical,
-estimated-target FR is a modest convergence accelerator and can even be mildly
-harmful (the metastability model, $+\EstIntegImpPct\%$ integrated error; the hot
-entropic bottleneck, $\EBwarmGainBetaFour\%$). When ABF is starved the same
-correction is a large and reliable win: $+\EBgainStrong\%$ in the cold bottleneck
-($\EBcoldWin/20$ seeds) and $+\WCAtunedGainPct\%$ on the WCA dimer
-($\WCAtunedWin/10$ seeds), with the advantage growing with simulation budget and
-solvent density.
+Across three controlled systems --- a 2D metastability model, a 2D entropic
+bottleneck with an analytic conditional law, and a many-body condensed-phase WCA
+dimer with a high-accuracy TI reference --- Fisher--Rao birth--death helps ABF
+only after one specifies the regime. In the easy metastability setting it is a
+modest accelerator and the oracle diagnostic suggests target direction still
+matters. In the cold entropic bottleneck it gives a large practical gain
+($+\EBgainStrong\%$, $\EBcoldWin/20$ seeds), but the oracle target is worse than
+ABF, showing that perfect reference-shaped density steering is not the same as
+best ABF accuracy. In the WCA dimer tuned FR reliably improves the free energy
+($+\WCAtunedGainPct\%$, $\WCAtunedWin/10$ seeds), while stronger FR exposes the
+accuracy--diversity boundary.
 
-The mechanism is the same in all three cases and is best described as
-\emph{balanced-resampling variance reduction}: by cloning whole configurations from
-under-represented regions of the reaction coordinate, FR raises the number of
-effectively independent force samples per bin, which is exactly what a starved ABF
-estimator lacks. This explains the study's most counter-intuitive observation ---
-that the precise FR \emph{target} matters little in the starved regimes, where a
-uniform target nearly matches the estimated one and an oracle target is no better
-(WCA) or even worse (entropic bottleneck) than ABF. Target-shape steering is a
-secondary effect that surfaces only when the variance-reduction headroom is spent,
-i.e.\ when ABF is well-sampled; the ``target-quality bottleneck'' reading of the
-easy metastability case does not generalise. The single failure mode is diversity
-collapse under too-aggressive birth--death (the WCA dimer's gain erodes past the
-\texttt{fr\_rate}$\approx0.1$--$0.2$ sweet spot and reverses outright for
-\texttt{fr\_rate}$\ge1$), bounded by how fast the system's orthogonal
-coordinates re-equilibrate cloned replicas.
-
-Two caveats persist throughout. The oracle target uses the reference free energy
-and is never a deployable method; it is reported only as a diagnostic whose
-behaviour --- best in the easy case, worst in the cold bottleneck --- is itself
-part of the synthesis. And the practical recommendation is unambiguous: use the
-estimated target, at a moderate rate calibrated to the orthogonal relaxation time,
-and expect the largest returns precisely where ABF alone struggles most.
+The common object is marginal reallocation, not a universal variance-reduction
+slogan. FR moves whole configurations from over-represented to under-represented
+reaction-coordinate regions. When ABF is starved, this improves weighted support
+for the mean-force estimator; when ABF is already well sampled, it can add noise;
+and when the rate is too high, it collapses ancestor diversity. The oracle target
+is useful precisely because it reveals these regimes: it is best in the easy case,
+irrelevant in WCA, and harmful in the cold bottleneck. The practical recommendation
+is therefore regime-aware: use the estimated target, choose a moderate rate
+calibrated to orthogonal relaxation and ancestor diversity, and expect the largest
+returns where ABF alone lacks reaction-coordinate support.

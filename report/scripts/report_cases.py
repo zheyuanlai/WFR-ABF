@@ -535,8 +535,9 @@ def write_wca_tables(cs, wr, tab_dir):
             rows, [r"Method", r"$\|F\!-\!F_{\rm ref}\|$",
                    r"$\|F'\!-\!F'_{\rm ref}\|$", r"gain (\%)", r"wins",
                    r"anc. ESS"],
-            r"WCA main comparison (250k steps, $N=1024$, $a=1.5$). The headline "
-            r"gain is in the free energy; the mean-force gain is modest.",
+            r"WCA main comparison (250k steps, $N=1024$, $a=1.5$). The tuned "
+            r"row is the practical headline; the strong row shows the "
+            r"accuracy--diversity tradeoff. The mean-force gain is modest.",
             "tab:wca_main", "lrrrrr", note=note))
 
 
@@ -556,10 +557,11 @@ def write_synthesis_table(ebn, wcan, meta_int_pct, tab_dir):
         fh.write(_simple_table(
             rows, [r"Case", r"Regime", r"FR gain (\%)", r"wins",
                    r"target effect"],
-            r"Cross-case synthesis: the estimated-target FR gain grows with how "
-            r"sample-starved ABF is, while the value of the target \emph{shape} "
-            r"(oracle vs.\ estimated) shrinks. Metastability gain is on the "
-            r"integrated error; the others on final $\|F-F_{\rm ref}\|$.",
+            r"Cross-case synthesis: FR is best read as regime-dependent marginal "
+            r"reallocation. The oracle target diagnoses target-direction "
+            r"headroom in the easy case, ties in WCA, and is harmful in the "
+            r"cold bottleneck. Metastability gain is on integrated error; the "
+            r"others use final $\|F-F_{\rm ref}\|$.",
             "tab:synthesis", "lllll"))
 
 

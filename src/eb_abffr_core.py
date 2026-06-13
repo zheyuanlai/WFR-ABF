@@ -346,8 +346,11 @@ def fr_resample_indices(S, fr_mask, g, dt_fr, cap, gen):
     pad = torch.gather(surv_perm, 1, rand_rank)
     sel = torch.where(invalid_slot, pad, sel)
 
-    # non-FR rows: identity gather (no resampling)
-    sel = torch.where(fr_mask.unsqueeze(1), sel, ar)
+    # non-FR rows: identity gather and zero event diagnostics.
+    active = fr_mask.unsqueeze(1)
+    sel = torch.where(active, sel, ar)
+    die = torch.where(active, die, torch.zeros_like(die))
+    clone = torch.where(active, clone, torch.zeros_like(clone))
     return sel, die, clone
 
 
@@ -649,6 +652,11 @@ def _finalize(L):
     for b in range(B):
         for m in range(M):
             r = b * M + m
+            use_fr = methods[m].use_fr
+            n_die = float(L["tot_die"][r]) if use_fr else 0.0
+            n_clone = float(L["tot_clone"][r]) if use_fr else 0.0
+            n_fr_apply = int(L["n_fr_apply"]) if use_fr else 0
+            repl_fraction = float((n_die + n_clone) / max(n_fr_apply * N, 1)) if use_fr else 0.0
             rec = {
                 "config": asdict(cfgs[b]),
                 "method": methods[m].name,
@@ -668,12 +676,11 @@ def _finalize(L):
                 "F_ref": npy(F_ref[r]),
                 "Fp_ref": npy(Fp_ref[r]),
                 "p_hat": npy(p_hat[r]),
-                "q_target": npy(q_final[r]) if methods[m].use_fr else None,
-                "n_die": float(L["tot_die"][r]),
-                "n_clone": float(L["tot_clone"][r]),
-                "n_fr_apply": int(L["n_fr_apply"]),
-                "repl_fraction": float((L["tot_die"][r] + L["tot_clone"][r])
-                                       / max(L["n_fr_apply"] * N, 1)),
+                "q_target": npy(q_final[r]) if use_fr else None,
+                "n_die": n_die,
+                "n_clone": n_clone,
+                "n_fr_apply": n_fr_apply,
+                "repl_fraction": repl_fraction,
                 "cond_centers": npy(cond["cond_centers"]),
                 "cond_emp_var": npy(cond["cond_emp_var"][r]),
                 "cond_ref_var": npy(cond["cond_ref_var"][r]),

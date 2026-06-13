@@ -40,9 +40,11 @@ setting the transverse channel is $\omega_{\mathrm{in}}/\omega_{\mathrm{out}}=25
 i.e.\ its standard deviation is $25\times$ narrower than in the wells,
 contributing an \emph{entropic}
 term $\beta^{-1}\log\omega(x)$ to the free energy. We are explicit, however, that
-in this parameterisation the entropic barrier $\beta^{-1}\log\omega_{\mathrm{in}}
-\approx 0.4$ is small next to the energetic barrier $4H\approx10$ (in $F$-units).
-The bottleneck modulates the transverse width but is \emph{not} the dominant
+in this parameterisation the entropic contribution
+$\beta^{-1}\log(\omega_{\mathrm{in}}/\omega_{\mathrm{out}})\approx0.40$ is smaller
+than the energetic barrier height $U(0)-U(\pm1)=H=2.5$. The quantity $4H=10$ is the
+quartic force prefactor in $F'(x)$, not the free-energy barrier. The bottleneck
+therefore modulates the transverse width but is \emph{not} the dominant
 contributor to reaction-coordinate starvation; that role belongs to the energetic
 double well. This matters for reading the $\omega_{\mathrm{in}}$ sweep below.
 
@@ -53,7 +55,9 @@ Langevin noise per seed). The diagnostics \textbf{FR uniform}~\eqref{eq:q_unif}
 and \textbf{FR oracle}~\eqref{eq:q_oracle} (built from the analytic $\Fref$, hence
 not deployable, \cref{rem:oracle}) are also run. The FR hyperparameters are listed
 in \cref{tab:eb_design}; an assertion guards every batched call so the reference
-never reaches the estimated target.
+never reaches the estimated target. For the $\omega_{\mathrm{in}}$ sweep only, the
+stiffest channel is stabilised with a smaller time step and more steps at the same
+physical time horizon ($\mathrm{d}t=4\times10^{-4}$, $100{,}000$ steps).
 
 \input{tables/eb_design.tex}
 
@@ -110,8 +114,8 @@ bottleneck-strength scaling the data do not show.
   \caption{Bottleneck-width sweep $\omega_{\mathrm{in}}$ at $\beta=8$. The FR gain
     is large ($\sim50\%$) and $100\%$ reliable at every width, but it does
     \emph{not} grow with the bottleneck strength: the ABF baseline error is flat
-    because the energetic barrier $4H\approx10$ dominates the sub-unit entropic
-    barrier $\beta^{-1}\log\omega_{\mathrm{in}}$.}
+    because the energetic barrier height $H=2.5$ dominates the smaller entropic
+    contribution $\beta^{-1}\log(\omega_{\mathrm{in}}/\omega_{\mathrm{out}})$.}
   \label{fig:eb_omega}
 \end{figure}
 
@@ -143,23 +147,23 @@ Because $Y\mid X=x\sim\mathcal N(0,1/(\beta\omega(x)^2))$ is \emph{analytic}
 than against a noisy histogram --- the gap that \cref{rem:cond_limit} left open in
 the metastability case. \Cref{fig:eb_conditional} compares the empirical
 $\widehat{\mathrm{Var}}(Y\mid X\in I_j)$ to $1/(\beta\omega(x_j)^2)$ at five
-$x$-bins. \textbf{FR preserves the conditional law}: at every bin the FR variance
-tracks the analytic value as well as ABF does, across nearly three orders of
-magnitude (from $\sim2\times10^{-4}$ at the bottleneck $x=0$ to $\sim0.12$ in the
-wells), including the extremely narrow channel at $x=0$. The residual errors are
-dominated by bin-count noise, not by any systematic FR distortion. The
-free-energy improvement is therefore achieved \emph{without} corrupting the
-orthogonal degrees of freedom --- exactly the benign behaviour
-\cref{prop:cond_invariance} requires, now confirmed against an exact
-conditional.
+$x$-bins. The result is reassuring but not uniformly dominant: FR tracks the
+analytic variance well across nearly three orders of magnitude (from
+$\sim2\times10^{-4}$ at the bottleneck $x=0$ to $\sim0.12$ in the wells), and is
+most competitive in the bottleneck and middle bins, but it is slightly worse than
+ABF in the well bins for this diagnostic. Thus the free-energy improvement is not
+coming from a visible collapse of the conditional law; it is achieved while the
+orthogonal variance remains close to the analytic conditional, with residual
+errors dominated by finite bin counts rather than a systematic FR bias.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.92\textwidth]{fig_eb_04_conditional.png}
   \caption{Conditional fidelity against the \emph{analytic} law
     $\mathrm{Var}(Y\mid X=x)=1/(\beta\omega(x)^2)$. Empirical FR and ABF variances
-    both track the analytic curve across three orders of magnitude; FR is not
-    worse than ABF at any bin, including the narrow channel at $x=0$.}
+    both track the analytic curve across three orders of magnitude. FR is most
+    competitive near the bottleneck and middle bins, while ABF is slightly closer
+    in the well bins; the diagnostic shows no conditional-law collapse.}
   \label{fig:eb_conditional}
 \end{figure}
 
@@ -172,6 +176,7 @@ when ABF is starved, mildly hurts when it is not), not by the bottleneck width.
 The mechanism is balanced resampling / variance reduction, not shape steering:
 the uniform target nearly matches the estimated one and the oracle target is
 \emph{worse} than ABF --- the reverse of the metastability ranking. The safe FR
-regime is wide (no failure boundary up to $\gamma=50$), and, thanks to the
-analytic conditional, we confirm directly that successful FR does not corrupt
-$Y\mid X=x$.
+regime is wide (no failure boundary up to $\gamma=50$), and the analytic
+conditional diagnostic shows that the gain is obtained without a systematic
+collapse of $Y\mid X=x$, even though FR is not uniformly better than ABF on every
+conditional-variance bin.

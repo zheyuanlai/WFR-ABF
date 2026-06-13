@@ -19,7 +19,7 @@ canonical (Boltzmann--Gibbs) density
 \end{equation}
 where $V$ is the potential energy and $\beta=1/(k_{\mathrm B}T)$ is the inverse
 temperature. Fixing the reaction coordinate to the first coordinate,
-$\xib(x,y)=x$, the free energy $F(x)$ and the (local) mean force $F'(x)$ along
+$\xib(x,y)=x$, the free energy $F(x)$ and the local mean force $F'(x)$ along
 $\xib$ are the objects of interest. The difficulty is metastability: when $V$
 has well-separated basins along $x$, unbiased Langevin dynamics crosses the
 barrier rarely, so a direct estimate of $F$ converges intolerably slowly.
@@ -49,42 +49,41 @@ Fisher--Rao geometry~\citep{Amari2016}, one reallocates probability mass by
 particles in under-represented regions, driving $\phat_t$ toward a chosen target
 marginal $q_t(x)$ without integrating any additional dynamics. Coupling such a
 correction to ABF is appealing because the two act on complementary objects
-(force versus density), but it is not obvious that it helps: a birth--death step
-resamples \emph{whole} configurations $(x,y)$, and if it distorts the
-conditional law $Y\mid X=x$ it will corrupt precisely the quantity ABF
-estimates.
+(force versus density), but it is not automatically beneficial: a birth--death
+step resamples \emph{whole} configurations $(x,y)$, and if it distorts the
+conditional law $Y\mid X=x$ it will corrupt precisely the quantity ABF estimates.
 
 \subsection{Central question and contributions}
-This report asks three questions across \emph{three} controlled systems of
-increasing difficulty, each with an essentially exact reference free energy:
+This report asks how FR changes ABF across \emph{three} controlled systems, not
+whether one slogan can describe all of them:
 \begin{enumerate}
-  \item \textbf{Does FR help ABF?} (Q1)
-  \item \textbf{How should FR be added so that it helps?} (Q2--Q3)
-  \item \textbf{What are the limitations, failure modes, and future
-        directions?} (Q4)
+  \item \textbf{When does marginal reallocation help ABF, and when can it hurt?}
+        (Q1)
+  \item \textbf{What target and rate choices make FR useful in each regime?}
+        (Q2--Q3)
+  \item \textbf{What limitations and failure modes appear when the system becomes
+        more realistic?} (Q4)
 \end{enumerate}
-The three systems are (i) a two-dimensional double-well \emph{metastability}
-model with a quadrature-exact reference (\cref{sec:case_meta}); (ii) a
-two-dimensional \emph{entropic-bottleneck} model with a narrow transverse
-channel, for which both the reference free energy \emph{and} the conditional law
-$Y\mid X=x$ are analytic (\cref{sec:case_eb}); and (iii) a many-body
-\emph{Weeks--Chandler--Andersen (WCA) dimer} in a dense solvent with a
-thermodynamic-integration reference (\cref{sec:case_wca}). Together they span a
-range of \emph{how sample-starved ABF is}: from a regime where plain ABF is
-already a strong baseline to regimes where it is badly starved on the far side of
-a barrier.
+The systems are (i) a two-dimensional double-well \emph{metastability} model
+with a quadrature reference (\cref{sec:case_meta}); (ii) a two-dimensional
+\emph{entropic-bottleneck} model with a narrow transverse channel, for which both
+the reference free energy \emph{and} the conditional law $Y\mid X=x$ are analytic
+(\cref{sec:case_eb}); and (iii) a many-body \emph{Weeks--Chandler--Andersen
+(WCA) dimer} in a dense solvent with a high-accuracy thermodynamic-integration
+reference (\cref{sec:case_wca}). Together they span three regimes: an easy
+baseline where target direction can matter, a cold analytic bottleneck where
+density correction and free-energy accuracy can come apart, and a many-body
+system where improved coverage must be balanced against loss of lineage diversity.
 
-Our contributions are: (i) a precise statement of the coupled ABF--FR algorithm
-in consistent notation, applicable to both two-dimensional and many-body systems
+Our contributions are: (i) a consistent ABF--FR notation that covers both the
+analytic two-dimensional models and the many-body WCA collective variable
 (\cref{sec:abf,sec:fr}); (ii) three matched-seed production studies that quantify
-the effect of FR and of its target marginal on each system
+both the practical estimated-target method and diagnostic uniform/oracle targets
 (\cref{sec:case_meta,sec:case_eb,sec:case_wca}); and (iii) a cross-case synthesis
-(\cref{sec:synthesis}) that ties the three results into a single picture. A
-recurring methodological point is the careful interpretation of an \emph{oracle}
-target that uses the reference free energy: it is a diagnostic control that bounds
-the achievable benefit, never a deployable method. The central finding, developed
-in \cref{sec:synthesis}, is that \emph{FR helps ABF in proportion to how starved
-ABF is}: a modest convergence accelerator (or even mildly harmful) when ABF
-already samples well, but a large and reliable variance-reduction gain when ABF is
-starved --- and that in the starved regimes the precise target \emph{shape}
-matters surprisingly little.
+(\cref{sec:synthesis}) that explains why the conclusions are intentionally
+different across examples. A recurring methodological point is the careful
+interpretation of an \emph{oracle} target that uses the reference free energy: it
+is a diagnostic control, never a deployable method and not a universal upper
+bound. Its behaviour is itself part of the evidence: best in the easy
+metastability setting, approximately tied with the practical target in WCA, and
+worse than ABF in the cold entropic bottleneck.

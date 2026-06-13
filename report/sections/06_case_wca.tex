@@ -26,10 +26,12 @@ free-energy barrier near $z=0.5$ is partly entropic / crowding-driven, since the
 dimer must displace solvent to cross it. Dynamics are overdamped Langevin at
 $\beta=1$, $\mathrm{d}t=0.002$, with the minimum-image convention; the default
 system is $a=1.5$, $\sigma=\epsilon=1$. The local mean force along $z$ is the
-constrained projection of the physical forces plus the geometric $2w/(\beta r)$
-term (\cref{rem:manybody}). The reference $F(z)$ is computed once per system $a$ by
-constrained-MD thermodynamic integration~\citep{Carter1989,DenOtterBriels1998}
-and used for evaluation only; errors are taken on the interior window
+constrained projection of the physical forces, including the geometric
+contribution with the sign convention of the estimator (\cref{rem:manybody}). The
+reference $F(z)$ is computed once per system $a$ by constrained-MD thermodynamic
+integration~\citep{Carter1989,DenOtterBriels1998}; it is a high-accuracy numerical
+reference used for evaluation only, not an analytic exact solution. Errors are
+taken on the interior window
 $z\in[-0.1,1.1]$ with the additive constant aligned.
 
 \subsection{Methods and design}
@@ -54,9 +56,13 @@ median final $\Ltwo(F)$ from $\WCAabfLtwoF$ to $\WCAtunedLtwoF$
 entropic-bottleneck case, the uniform target ($+\WCAuniGainPct\%$) and the oracle
 target ($+\WCAoracleGainPct\%$) are \emph{essentially as good as} the estimated
 target --- the online estimated target already extracts nearly all the available
-benefit, and there is no headroom to the oracle. We are explicit that the headline
-gain is in the \emph{free energy}: the mean-force error $\Ltwo(F')$ improves only
-modestly ($\approx22\%$), so we do not claim a large mean-force improvement.
+benefit, and there is no headroom to the oracle. The stronger estimated-target row
+in the same table attains the lowest final free-energy error, but with a much
+smaller ancestor ESS; we therefore use the tuned row as the practical headline and
+the strong row as the accuracy--diversity contrast. We are explicit that the
+headline gain is in the \emph{free energy}: the mean-force error $\Ltwo(F')$
+improves only modestly ($\approx22\%$), so we do not claim a large mean-force
+improvement.
 
 \input{tables/wca_main.tex}
 
@@ -80,31 +86,31 @@ modestly ($\approx22\%$), so we do not claim a large mean-force improvement.
   \label{fig:wca_profiles}
 \end{figure}
 
-\subsection{Mechanism: resampling-driven variance reduction}
-The diagnostics support the same mechanism as the entropic bottleneck rather than
-a coverage-reshaping one. Final reaction-coordinate region fractions and the
-fraction of effective ABF samples in the transition window are nearly identical
-across ABF, FR estimated, FR uniform and FR oracle: FR does \emph{not} converge to
-a different stationary $z$-distribution. Instead the gain appears immediately after
-FR activates and is sustained for the rest of the run. \Cref{fig:wca_mechanism}
-shows the interpretation: birth--death acts as a \emph{variance-reduction
-resampler for the ABF estimator}. Replicas stuck in over-represented
-configurations are replaced by whole-configuration clones of under-represented
-ones, raising the number of effectively-independent force samples per $z$-bin even
-when the marginal looks unchanged. Because the \emph{entire} WCA configuration is
-copied (\cref{rem:manybody}), clones inject decorrelated solvent arrangements,
-accelerating convergence of $\Fhat$ without requiring a different stationary
-coverage --- consistent with $\text{uniform}\approx\text{estimated}\approx
-\text{oracle}$.
+\subsection{Mechanism: support reallocation with a diversity cost}
+The diagnostics support the same broad mechanism as the entropic bottleneck rather
+than a stationary-coverage reshaping one. Final reaction-coordinate region
+fractions and the kernel-weighted ABF denominator in the transition window are
+nearly identical across ABF, FR estimated, FR uniform and FR oracle: FR does
+\emph{not} converge to a different stationary $z$-distribution. Instead the gain
+appears immediately after FR activates and is sustained for the rest of the run.
+\Cref{fig:wca_mechanism} shows the interpretation: birth--death acts as a
+\emph{support-reallocation resampler for the ABF estimator}. Replicas stuck in
+over-represented configurations are replaced by whole-configuration clones of
+under-represented ones, improving weighted force-sample support in important
+$z$-bins even when the marginal looks unchanged. A clone is not an independent
+solvent arrangement at birth; the point is that useful whole configurations are
+moved into starved reaction-coordinate regions and then decorrelated by subsequent
+Langevin dynamics. This explains why target shape matters little here, consistent
+with $\text{uniform}\approx\text{estimated}\approx\text{oracle}$.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.92\textwidth]{fig_wca_04_mechanism.png}
-  \caption{Mechanism. (a) Effective ABF sample count $N_{\mathrm{eff}}(z)$ is
-    raised by FR in the transition window; (b) per-bin mean-force error is reduced
-    there; (c) birth (clone) and death locations concentrate around the
-    over/under-sampled regions; FR reshapes the \emph{sampling quality}, not the
-    stationary marginal.}
+  \caption{Mechanism. (a) The kernel-weighted ABF denominator
+    $N_{\mathrm{eff}}(z)$ is raised by FR in the transition window; (b) per-bin
+    mean-force error is reduced there; (c) birth (clone) and death locations
+    concentrate around the over/under-sampled regions; FR reshapes the
+    \emph{sampling support}, not the stationary marginal.}
   \label{fig:wca_mechanism}
 \end{figure}
 
@@ -175,7 +181,7 @@ is balanced-resampling variance reduction after warm-up; the precise target shap
 matters little ($\text{uniform}\approx\text{estimated}\approx\text{oracle}$, and
 the estimated target already reaches the oracle's accuracy). The method has a clear
 safe regime, \texttt{fr\_rate}$\approx0.1$--$0.2$, and a real failure boundary:
-too-aggressive birth--death reverses the benefit as diversity collapses. The
-advantage \emph{grows with simulation budget}, is insensitive to replica count, and
-is largest in the densest, hardest solvent --- exactly the starved regime the
-variance-reduction mechanism predicts.
+too-aggressive birth--death reverses the benefit as diversity collapses. The relative advantage \emph{grows with simulation budget}, is insensitive to
+replica count, and removes the largest absolute error in the densest, hardest
+solvent --- exactly the starved regime the support-reallocation mechanism
+predicts.
